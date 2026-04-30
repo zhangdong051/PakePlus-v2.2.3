@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>机器狗控制器 | B2智能控制台 | 气体监测</title>
+    <!-- 引入必要的SDK文件 -->
+    <script type="text/javascript" src="adapter-7.4.0.min.js"></script>
+    <script type="text/javascript" src="srs.sdk.js"></script>
+    <!-- 引入MQTT.js库 -->
+    <script src="mqtt.min.js"></script>
+    <!-- 引入Font Awesome -->
+    <link href="fontawesome/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+        /* 补充样式使设置区域更整洁 */
+        .mqtt-setting-item input {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background: var(--input-bg, #fff);
+            color: var(--text-color, #333);
+        }
+        .video-server-ip-hint {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .dark-theme .video-server-ip-hint,
+        .evening-theme .video-server-ip-hint {
+            color: #adb5bd;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- 头部区域 -->
+    <header>
+        <h1 class="header-title">🦾5G网联云平台🤺</h1>
+        <div class="B2-status">		
+			<div id="version">--</div>
+            <div id="state">--</div>
+			<div id="battery_capacity">--%</div>
+            <div id="current">--A</div>
+			<div id="cycle">--</div>
+			<div id="motor_state-communication_frequency">--Hz</div>
+			<div id="uplink-data">--B</div>
+			<div id="downlink-data">--B</div>
+        </div>
+        <div class="mqtt-connection">
+            <div class="mqtt-info">
+                <span id="mqtt-indicator"></span>
+                <span id="mqtt-status">MQTT❌</span>
+            </div>
+            <div class="mqtt-controls">
+                <button id="mqtt-toggle-btn" class="connect-btn"><i class="fa fa-plug mr-1"></i>连接</button>
+                <div class="ai-control">
+                    <button type="button" class="ai-btn" onclick="jinruzuni()"><i class="fa fa-magnet" style="margin-right: 6px;"></i> 趴下</button>
+                    <button type="button" class="ai-btn" onclick="pinghengzhanli()"><i class="fa fa-balance-scale" style="margin-right: 6px;"></i>站立</button>
+                </div>
+                <button id="theme-toggle" class="theme-toggle-btn">
+                    <i class="fa fa-moon-o"></i>
+                </button>
+            </div>
+            <div class="settings-icon" id="settingsIcon">⚙️</div>
+        </div>
+    </header>
+
+    <!-- 设置折叠区域 -->
+    <div class="settings-section" id="settingsSection">
+        <div class="settings-content">
+            <div class="mqtt-settings">
+                <h4>MQTT连接设置:</h4>
+                <div class="mqtt-setting-grid">
+                    <div class="mqtt-setting-item">
+                        <label for="mqtt-addr-port">MQTT服务器:</label>
+                        <input type="text" id="mqtt-addr-port" value="1.94.67.34:8083" placeholder="例如: 192.168.2.100:8083">
+                    </div>
+                    <div class="mqtt-setting-item">
+                        <label for="imei-input">IMEI号:</label>
+                        <input type="text" id="imei-input" value="86497000000" placeholder="设备IMEI号">
+                    </div>
+                </div>
+            </div>
+            <div class="mqtt-setting-item">
+                <label for="video-server-ip">视频服务器IP:</label>
+                <input type="text" id="video-server-ip" placeholder="例如: 1.94.67.34" value="">
+                <div class="video-server-ip-hint">💡 用于生成视频流地址，留空则自动使用MQTT服务器IP</div>
+            </div>
+            <div class="mqtt-setting-item">
+                <button id="refresh-video" class="message-send-btn" disabled>刷新视频</button>
+            </div>
+            <div class="message-area">
+                <h4>调试信息:</h4>
+                <div id="receiveData" class="receive-area"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 视频显示区 -->
+    <div class="main-content">
+        <div id="large-video-container" class="srs-player">
+            <video id="remote-video" autoplay playsinline></video>
+            <div id="video-loading-status" class="video-status" style="display: none;">加载中...</div>
+            <div id="video-error-status" class="video-status" style="display: none;">视频加载失败</div>
+            
+            <!-- 气体检测数据显示浮层（视频左上角） -->
+            <div id="gas-info-panel" class="gas-info-overlay">
+                ⚠️ 气体数据未连接
+            </div>
+			
+			<div class="camera-controls">
+				<button type="button" class="video-switch-btn camera-btn" onclick="dronepicter()">📸</button>
+				<button type="button" class="video-switch-btn camera-btn" onclick="dronevideo()">🛑</button>
+				<button type="button" class="video-switch-btn camera-btn" onclick="minolianjie()">急停</button>
+			</div>
+			
+            <!-- 原始按钮组（初始位于底部容器，动态移动） -->
+            <div class="video-switch-buttons original-buttons">
+				<button type="button" class="video-switch-btn" onclick="aimoshi()">Ai模式</button>
+				<button type="button" class="video-switch-btn" onclick="changguimoshi()">常规模式</button>
+                <button type="button" class="video-switch-btn" onclick="tingzhiyidong()"><i class="fa fa-play"></i>持续移动</button>
+                <button type="button" class="video-switch-btn" onclick="qiehuanbutai()"><i class="fa fa-exchange"></i> 切换步态</button>
+                <button type="button" class="video-switch-btn" onclick="huifuzhanli()"><i class="fa fa-refresh"></i> 恢复站立</button>
+                <button type="button" class="video-switch-btn" onclick="gujigenzong()"><i class="fa fa-map-marker"></i> 轨迹跟踪</button>
+				<button type="button" class="video-switch-btn" onclick="aimoshi()"><i class="fa fa-microchip" style="margin-right: 6px;"></i> 🐵模式</button>
+				<div id="gamepad-status">🎮使用虚拟摇杆</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 控制区域 (摇杆+游戏手柄状态) -->
+    <div class="controls-container">
+        <div class="video-controls">
+            <div class="joystick-area">
+                <div class="joystick-container" id="left-joystick-container">
+                    <div class="joystick-center"></div>
+                    <div class="joystick" id="left-joystick"></div>
+                    <div class="joystick-label">C高度Z/Q转向E</div>
+                    <div class="joystick-values">
+                        <span>X: <span id="left-joystick-x">0</span></span>
+                        <span>Y: <span id="left-joystick-y">0</span></span>
+                    </div>
+                </div>
+                <!-- 按钮组将被动态插入到此处（左右摇杆之间） -->
+                <div class="joystick-container" id="right-joystick-container">
+                    <div class="joystick-center"></div>
+                    <div class="joystick" id="right-joystick"></div>
+                    <div class="joystick-label">W前后S/A左右D</div>
+                    <div class="joystick-values">
+                        <span>X: <span id="right-joystick-x">0</span></span>
+                        <span>Y: <span id="right-joystick-y">0</span></span>
+                    </div>
+                </div>
+            </div>
+            <!-- 底部按钮容器（默认放置按钮组的位置） -->
+            <div id="bottom-button-container" class="bottom-buttons-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 抽离的服务模块 -->
+<script src="mqtt-service.js"></script>
+<script src="gas-display-service.js"></script>
+
+<script>
+    // ======================= DOM 元素缓存 =======================
+    const DOM = {
+        mqttToggleBtn: document.getElementById('mqtt-toggle-btn'),
+        receiveArea: document.getElementById('receiveData'),
+        mqttIndicator: document.getElementById('mqtt-indicator'),
+        mqttStatus: document.getElementById('mqtt-status'),
+        settingsIcon: document.getElementById('settingsIcon'),
+        settingsSection: document.getElementById('settingsSection'),
+        mqttAddrPort: document.getElementById('mqtt-addr-port'),
+        imeiInput: document.getElementById('imei-input'),
+        themeToggle: document.getElementById('theme-toggle'),
+        video: {
+            player: document.getElementById('remote-video'),
+            loadingStatus: document.getElementById('video-loading-status'),
+            errorStatus: document.getElementById('video-error-status'),
+            refreshBtn: document.getElementById('refresh-video')
+        },
+        videoServerIpInput: document.getElementById('video-server-ip'),
+        videoControls: document.querySelector('.video-controls'),
+        gamepadStatus: document.getElementById('gamepad-status'),
+        bottomButtonContainer: document.getElementById('bottom-button-container'),
+        buttonsGroup: document.querySelector('.video-switch-buttons'),
+        leftJoystickContainer: document.getElementById('left-joystick-container'),
+        rightJoystickContainer: document.getElementById('right-joystick-container'),
+        joystickArea: document.querySelector('.joystick-area'),
+        gasInfoPanel: document.getElementById('gas-info-panel')
+    };
+
+    // ======================= 本地存储服务 (新增视频服务器IP存储) =======================
+    const StorageService = {
+        KEYS: {
+            MQTT_ADDR_PORT: 'b2_mqtt_addr_port',
+            IMEI: 'b2_imei',
+            VIDEO_SERVER_IP: 'b2_video_server_ip'
+        },
+        saveMqttAddr(addr) {
+            if (addr) localStorage.setItem(this.KEYS.MQTT_ADDR_PORT, addr);
+        },
+        loadMqttAddr() {
+            return localStorage.getItem(this.KEYS.MQTT_ADDR_PORT);
+        },
+        saveImei(imei) {
+            if (imei) localStorage.setItem(this.KEYS.IMEI, imei);
+        },
+        loadImei() {
+            return localStorage.getItem(this.KEYS.IMEI);
+        },
+        saveVideoServerIp(ip) {
+            if (ip) localStorage.setItem(this.KEYS.VIDEO_SERVER_IP, ip);
+            else localStorage.removeItem(this.KEYS.VIDEO_SERVER_IP);
+        },
+        loadVideoServerIp() {
+            return localStorage.getItem(this.KEYS.VIDEO_SERVER_IP);
+        },
+        restoreSettings() {
+            const savedAddr = this.loadMqttAddr();
+            if (savedAddr) DOM.mqttAddrPort.value = savedAddr;
+            const savedImei = this.loadImei();
+            if (savedImei) DOM.imeiInput.value = savedImei;
+            const savedVideoIp = this.loadVideoServerIp();
+            if (savedVideoIp) DOM.videoServerIpInput.value = savedVideoIp;
+        },
+        bindAutoSave() {
+            const saveMqtt = () => {
+                const val = DOM.mqttAddrPort.value.trim();
+                if (val) this.saveMqttAddr(val);
+            };
+            const saveImei = () => {
+                const val = DOM.imeiInput.value.trim();
+                if (val) this.saveImei(val);
+            };
+            const saveVideoIp = () => {
+                const val = DOM.videoServerIpInput.value.trim();
+                if (val) this.saveVideoServerIp(val);
+                else this.saveVideoServerIp('');
+            };
+            DOM.mqttAddrPort.addEventListener('input', saveMqtt);
+            DOM.mqttAddrPort.addEventListener('change', saveMqtt);
+            DOM.imeiInput.addEventListener('input', saveImei);
+            DOM.imeiInput.addEventListener('change', saveImei);
+            DOM.videoServerIpInput.addEventListener('input', saveVideoIp);
+            DOM.videoServerIpInput.addEventListener('change', saveVideoIp);
+        }
+    };
+
+    // ======================= 全局状态 =======================
+    const appState = {
+        gamepadRefreshInterval: 100,
+        mqtt: {
+            client: null,
+            brokerUrl: '',
+            publishTopic: '',
+            subscribeTopic: '',
+            lastSent: '',
+            isConnected: false,
+            gasTopic: null
+        },
+        gamepad: {
+            instance: null,
+            type: 'unknown',
+            intervalId: null,
+            button4Processed: false,
+            button5Processed: false,
+            button6Processed: false,
+            button7Processed: false
+        },
+        rcValues: {
+            rc0: 0,
+            rc1: 0,
+            rc2: 0,
+            rc3: 0
+        },
+        outputRatio: 25,
+        video: {
+            sdk: null,
+            isPlaying: false
+        },
+        theme: localStorage.getItem('app-theme') || 'light'
+    };
+
+    // ======================= 辅助函数 =======================
+    const MessageService = {
+        add(text, isError = false) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            const messageElement = document.createElement('div');
+            messageElement.className = isError ? 'text-red-600' : '';
+            messageElement.style.color = isError ? '#f87171' : '#d1d5db';
+            messageElement.textContent = `[${timeString}] ${text}`;
+            DOM.receiveArea.appendChild(messageElement);
+            DOM.receiveArea.scrollTop = DOM.receiveArea.scrollHeight;
+            if (DOM.receiveArea.children.length > 20) {
+                DOM.receiveArea.removeChild(DOM.receiveArea.firstChild);
+            }
+        }
+    };
+
+    // ======================= 视频地址生成 =======================
+    const VideoUrlBuilder = {
+        extractMqttServerIp() {
+            const addrPort = DOM.mqttAddrPort.value.trim();
+            if (!addrPort) return null;
+            const colonIndex = addrPort.indexOf(':');
+            if (colonIndex === -1) return null;
+            return addrPort.substring(0, colonIndex);
+        },
+        getEffectiveVideoServerIp() {
+            const customIp = DOM.videoServerIpInput.value.trim();
+            if (customIp) return customIp;
+            const fallbackIp = this.extractMqttServerIp();
+            if (fallbackIp) {
+                MessageService.add(`未指定视频服务器IP，自动使用MQTT服务器IP: ${fallbackIp}`, false);
+                return fallbackIp;
+            }
+            return null;
+        },
+        buildVideoUrl() {
+            const serverIp = this.getEffectiveVideoServerIp();
+            const imei = DOM.imeiInput.value.trim();
+            if (!serverIp) {
+                MessageService.add('无法获取视频服务器IP：请填写视频服务器IP或确保MQTT服务器地址格式正确', true);
+                return null;
+            }
+            if (!imei) {
+                MessageService.add('IMEI号不能为空，无法生成视频地址', true);
+                return null;
+            }
+            return `http://${serverIp}:1985/rtc/v1/whep/?app=live&stream=${imei}.flv`;
+        },
+        autoSuggestVideoIp() {
+            if (!DOM.videoServerIpInput.value.trim()) {
+                const mqttIp = this.extractMqttServerIp();
+                if (mqttIp) {
+                    DOM.videoServerIpInput.value = mqttIp;
+                    MessageService.add(`💡 已自动填充视频服务器IP: ${mqttIp} (可手动修改)`, false);
+                }
+            }
+        },
+        bindAutoSuggest() {
+            let lastMqttIp = this.extractMqttServerIp();
+            const updateSuggestion = () => {
+                const currentCustomIp = DOM.videoServerIpInput.value.trim();
+                const currentMqttIp = this.extractMqttServerIp();
+                if (currentMqttIp && (!currentCustomIp || currentCustomIp === lastMqttIp)) {
+                    DOM.videoServerIpInput.value = currentMqttIp;
+                    MessageService.add(`视频服务器IP已随MQTT地址更新为: ${currentMqttIp}`, false);
+                }
+                lastMqttIp = currentMqttIp;
+            };
+            DOM.mqttAddrPort.addEventListener('input', updateSuggestion);
+            DOM.mqttAddrPort.addEventListener('change', updateSuggestion);
+            this.autoSuggestVideoIp();
+        }
+    };
+
+    // ======================= 主题切换服务 (支持亮色、暗色、傍晚) =======================
+    const ThemeService = {
+        themes: ['light', 'dark', 'evening'],
+        themeIcons: {
+             light: 'fa-sun-o',
+			dark: 'fa-moon',
+			evening: 'fa-cloud-moon'
+        },
+        init() {
+            let savedTheme = localStorage.getItem('app-theme');
+            if (!savedTheme || !this.themes.includes(savedTheme)) savedTheme = 'light';
+            appState.theme = savedTheme;
+            this.setTheme(savedTheme);
+            DOM.themeToggle.addEventListener('click', () => this.nextTheme());
+        },
+        setTheme(theme) {
+            const root = document.documentElement;
+            root.classList.remove('light-theme', 'dark-theme', 'evening-theme');
+            root.classList.add(`${theme}-theme`);
+            const icon = DOM.themeToggle.querySelector('i');
+            icon.className = `fa ${this.themeIcons[theme] || 'fa-moon-o'}`;
+            localStorage.setItem('app-theme', theme);
+            appState.theme = theme;
+            MessageService.add(`已切换至${theme === 'light' ? '亮色' : theme === 'dark' ? '暗色' : '傍晚'}主题`);
+        },
+        nextTheme() {
+            const currentIndex = this.themes.indexOf(appState.theme);
+            const nextIndex = (currentIndex + 1) % this.themes.length;
+            this.setTheme(this.themes[nextIndex]);
+        }
+    };
+
+    // ======================= SRS视频服务 =======================
+    const SrsVideoService = {
+        init() {},
+        async startPlay() {
+            try {
+                DOM.video.loadingStatus.style.display = 'block';
+                DOM.video.errorStatus.style.display = 'none';
+                if (appState.video.sdk) await appState.video.sdk.close();
+                appState.video.sdk = new SrsRtcWhipWhepAsync();
+                DOM.video.player.srcObject = appState.video.sdk.stream;
+                const whepUrl = VideoUrlBuilder.buildVideoUrl();
+                if (!whepUrl) throw new Error('无法生成视频地址，请检查视频服务器IP或IMEI');
+                await appState.video.sdk.play(whepUrl, { videoOnly: true, audioOnly: false });
+                DOM.video.loadingStatus.style.display = 'none';
+                appState.video.isPlaying = true;
+                MessageService.add('视频流播放成功');
+            } catch (error) {
+                console.error('视频错误:', error);
+                MessageService.add(`视频错误: ${error.message}`, true);
+                DOM.video.loadingStatus.style.display = 'none';
+                DOM.video.errorStatus.style.display = 'block';
+                if (appState.video.sdk) {
+                    try { await appState.video.sdk.close(); } catch (e) {}
+                    appState.video.sdk = null;
+                }
+                appState.video.isPlaying = false;
+            }
+        },
+        async stopPlay() {
+            if (appState.video.sdk) {
+                try { await appState.video.sdk.close(); MessageService.add('视频已停止'); } catch (error) { console.error(error); }
+                appState.video.sdk = null;
+                appState.video.isPlaying = false;
+            }
+        }
+    };
+
+    // ======================= 按钮组位置管理 =======================
+    function moveButtonsTo(container) {
+        if (!DOM.buttonsGroup || !container) return;
+        if (DOM.buttonsGroup.parentElement === container) return;
+        container.appendChild(DOM.buttonsGroup);
+    }
+    function moveButtonsToJoystickArea() {
+        const joystickArea = DOM.joystickArea;
+        const rightJoystick = DOM.rightJoystickContainer;
+        if (!joystickArea || !rightJoystick || !DOM.buttonsGroup) return;
+        if (DOM.buttonsGroup.parentElement === joystickArea) return;
+        joystickArea.insertBefore(DOM.buttonsGroup, rightJoystick);
+    }
+    function updateButtonsPositionForJoystick(showJoystick) {
+        if (showJoystick) moveButtonsToJoystickArea();
+        else moveButtonsTo(DOM.bottomButtonContainer);
+    }
+    function toggleJoystick() {
+        const videoControls = DOM.videoControls;
+        const willShow = !videoControls.classList.contains('show-joystick');
+        if (willShow) {
+            videoControls.classList.add('show-joystick');
+            DOM.gamepadStatus.innerHTML = '🎮 隐藏虚拟摇杆';
+            MessageService.add('虚拟摇杆已显示，按钮组移至摇杆中间');
+        } else {
+            videoControls.classList.remove('show-joystick');
+            DOM.gamepadStatus.innerHTML = '🎮 使用虚拟摇杆';
+            MessageService.add('虚拟摇杆已隐藏，按钮组恢复到底部');
+        }
+        updateButtonsPositionForJoystick(willShow);
+    }
+
+    // ======================= 初始化入口 =======================
+    document.addEventListener('DOMContentLoaded', () => {
+        StorageService.restoreSettings();
+        StorageService.bindAutoSave();
+        moveButtonsTo(DOM.bottomButtonContainer);
+        
+        DOM.settingsIcon.addEventListener('click', () => {
+            DOM.settingsSection.classList.toggle('expanded');
+        });
+        
+        if (typeof initJoysticks === 'function') {
+            initJoysticks();
+        } else {
+            console.warn('initJoysticks未定义，请检查相关库');
+        }
+        
+        ThemeService.init();
+        VideoUrlBuilder.bindAutoSuggest();
+        
+        // 初始化MQTT服务 (全局MqttService来自mqtt-service.js)
+        if (typeof MqttService !== 'undefined') {
+            MqttService.init({
+                DOM, MessageService, SrsVideoService, GasDisplayService, VideoUrlBuilder, appState
+            });
+        } else {
+            console.error('MqttService未加载');
+        }
+        
+        // 初始化气体显示服务
+        if (typeof GasDisplayService !== 'undefined') {
+            GasDisplayService.init(DOM);
+        }
+        
+        DOM.videoControls.classList.remove('show-joystick');
+        DOM.gamepadStatus.addEventListener('click', toggleJoystick);
+        if (typeof GasDisplayService !== 'undefined') {
+            GasDisplayService.resetToDisconnected();
+        }
+    });
+
+    window.addEventListener('beforeunload', async () => {
+        await SrsVideoService.stopPlay();
+        if (appState.mqtt.client && appState.mqtt.client.connected) {
+            appState.mqtt.client.end(true);
+        }
+    });
+    
+    // 暴露全局供外部调用
+    window.publishMessage = (msg) => {
+        if (typeof MqttService !== 'undefined' && MqttService.publishMessage) {
+            MqttService.publishMessage(msg);
+        }
+    };
+</script>
+    <!-- 本地控制库 (摇杆/游戏手柄辅助) -->
+    <script src="./xnyg.js"></script>
+    <script src="./jpkz.js"></script>
+    <script src="./gamepads.js"></script>
+    <script src="./dogdatasend.js"></script>
+</body>
+</html>
