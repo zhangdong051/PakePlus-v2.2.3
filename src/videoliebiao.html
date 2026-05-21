@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全局指挥界面</title>
+    <!-- 引入WebRTC适配器 -->
+    <script type="text/javascript" src="adapter-7.4.0.min.js"></script>
+    <!-- 本地SDK文件 -->
+    <script type="text/javascript" src="srs.sdk.js"></script>
+    <!-- 引入Font Awesome -->
+  <link href="fontawesome/css/all.min.css" rel="stylesheet">
+    <!-- 引入MQTT客户端库 -->
+    <script src="mqtt.min.js"></script>
+    
+    <style>
+        /* 基础样式 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f0f2f5;
+            color: #1e293b;
+            padding: 10px;
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            grid-template-columns: 1fr;
+            grid-template-areas:
+                "header"
+                "main"
+                "info";
+            gap: 10px;
+        }
+        
+        .container {
+            width: 90%;
+            max-width: 100%;
+            margin: 0 auto;
+            height: 100%;
+        }
+        
+        /* 头部样式 */
+        header {
+            grid-area: header;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            border-radius: 12px;
+            padding: 12px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            flex-wrap: wrap;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .header-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-title i {
+            font-size: 1.6rem;
+        }
+        
+        /* 控制按钮 */
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .control-btn {
+            padding: 8px 16px;
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-size: 0.95rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .control-btn i {
+            font-size: 0.9rem;
+        }
+        
+        .control-btn:hover {
+            background-color: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+        }
+        
+        /* 视频播放器容器 - 优化布局 */
+        .videos-container {
+            grid-area: main;
+            display: grid;
+            gap: 10px;
+            height: 100%;
+            width: 100%;
+            overflow: auto;
+            align-content: start;
+            justify-content: center;
+            /* 最多三列布局 */
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            padding: 5px;
+        }
+        
+        /* 限制最大列数为3 */
+        @media (min-width: 1024px) {
+            .videos-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        /* 中等屏幕：最多两列 */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .videos-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        /* 小屏幕：单列 */
+        @media (max-width: 767px) {
+            .videos-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .video-item {
+            position: relative;
+            background-color: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            transition: all 0.3s ease;
+            aspect-ratio: 16/9;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0; /* 防止flex项目溢出 */
+        }
+        
+        .video-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+        }
+        
+        .video-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-name {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            z-index: 5;
+            backdrop-filter: blur(4px);
+        }
+        
+        /* 单个视频控制按钮 */
+        .video-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 5;
+        }
+        
+        .video-control-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+        }
+        
+        .play-btn {
+            background-color: rgba(34, 197, 94, 0.8);
+        }
+        
+        .stop-btn {
+            background-color: rgba(239, 68, 68, 0.8);
+        }
+        
+        .video-control-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .video-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 10;
+            font-size: 1.1rem;
+            backdrop-filter: blur(4px);
+        }
+        
+        /* 视频信息条 */
+        .video-info {
+            grid-area: info;
+            background-color: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-size: 0.95rem;
+            color: #475569;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        /* SDK加载失败提示 */
+        .sdk-error {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ef4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                top: -60px;
+                opacity: 0;
+            }
+            to {
+                top: 20px;
+                opacity: 1;
+            }
+        }
+        
+        .main-content {
+            grid-area: main;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        /* 响应式调整 */
+        @media (max-width: 767px) {
+            header {
+                justify-content: center;
+                padding: 10px 15px;
+            }
+            
+            .header-title {
+                width: 100%;
+                text-align: center;
+                font-size: 1.2rem;
+            }
+            
+            .control-btn {
+                flex: 1;
+                min-width: 70px;
+                padding: 6px 8px;
+                font-size: 0.85rem;
+                justify-content: center;
+            }
+            
+            .video-status {
+                padding: 10px 20px;
+                font-size: 1rem;
+            }
+            
+            .video-control-btn {
+                width: 28px;
+                height: 28px;
+            }
+            
+            .video-info {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .stats {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+        
+        /* 空状态提示 */
+        .empty-state {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #64748b;
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #cbd5e1;
+        }
+        
+        .empty-state p {
+            font-size: 1.1rem;
+            max-width: 400px;
+        }
+        
+        /* MQTT状态指示器 */
+        .mqtt-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .mqtt-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ef4444; /* 默认红色表示未连接 */
+        }
+        
+        .mqtt-connected {
+            background-color: #22c55e; /* 绿色表示已连接 */
+        }
+		/* 布局容器样式 - 核心：Flex横向排列 */
+.layout-controls {
+  display: flex;          /* 启用Flex布局，子元素默认横向排列 */
+  gap: 10px;              /* 按钮之间的间距（可选，提升美观度） */
+  align-items: center;    /* 按钮垂直居中对齐 */
+}
+
+	
+    </style>
+</head>
+<body>
+    <!-- SDK加载失败提示 -->
+    <div class="sdk-error" id="sdkError">SRS SDK加载失败，请检查srs.sdk.js文件是否存在！</div>
+    
+    <div class="container">
+        <header>
+            <h1 class="header-title"><i class="fa fa-video-camera"></i> 全局监控</h1>
+<div class="layout-controls">
+  <!-- 修正重复ID：ID必须唯一 -->
+  <button class="control-btn" id="controlCenterBtn">
+    </i> 💻返回控制中心
+  </button>
+  <button class="control-btn" id="toggleLayoutBtn">
+    <i class="fa fa-th"></i> 切换布局
+  </button>
+</div>
+            <div class="control-buttons">
+                <button class="control-btn" id="playAllBtn">
+                    <i class="fa fa-play"></i> 全部播放
+                </button>
+                <button class="control-btn" id="stopAllBtn">
+                    <i class="fa fa-stop"></i> 全部停止
+                </button>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="videos-container" id="videosContainer">
+                <!-- 视频窗口将通过JS动态生成 -->
+            </div>
+        </div>
+        
+        <div class="video-info">
+            <div class="stats">
+                <div class="stat-item">
+                    <i class="fa fa-video"></i>
+                    <span>总视频数: <span id="totalCount">0</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fa fa-play-circle"></i>
+                    <span>播放中: <span id="playingCount">0</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fa fa-columns"></i>
+                    <span>布局: <span id="layoutInfo">自适应</span></span>
+                </div>
+                <div class="stat-item mqtt-status">
+                    <i class="fa fa-wifi"></i>
+                    <span>MQTT: <span id="mqttStatus">未连接</span></span>
+                    <span class="mqtt-indicator" id="mqttIndicator"></span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // MQTT客户端配置与连接管理
+        const MqttService = {
+            client: null,
+           // topic: '/terminal/d10/droneDevices/setInfo',
+            connected: false,
+            
+            // 初始化MQTT连接
+            init() {
+                // 从配置中获取MQTT服务器信息，如果没有则使用默认值
+                const { config } = getStoredData();
+                const mqttHost = config.mqttServer || 'localhost';
+                const mqttPort = config.mqttPort || 8083;
+                
+                // 连接字符串 (使用WebSocket连接)
+                const brokerUrl = `ws://${mqttHost}/mqtt`;
+                
+                // 客户端ID，使用随机数避免重复
+                const clientId = `video_console_${Math.random().toString(16).substring(2, 10)}`;
+                
+                try {
+                    // 创建MQTT客户端
+                    this.client = mqtt.connect(brokerUrl, {
+                        clientId,
+                        clean: true,
+                        connectTimeout: 4000,
+                        reconnectPeriod: 1000
+                    });
+                    
+                    // 连接成功回调
+                    this.client.on('connect', () => {
+                        console.log('MQTT连接成功');
+                        this.connected = true;
+                        this.updateStatusUI(true);
+                    });
+                    
+                    // 连接错误回调
+                    this.client.on('error', (error) => {
+                        console.error('MQTT连接错误:', error);
+                        this.connected = false;
+                        this.updateStatusUI(false);
+                    });
+                    
+                    // 重连回调
+                    this.client.on('reconnect', () => {
+                        console.log('MQTT正在重连...');
+                        this.updateStatusUI(false);
+                    });
+                    
+                    // 断开连接回调
+                    this.client.on('close', () => {
+                        console.log('MQTT连接已断开');
+                        this.connected = false;
+                        this.updateStatusUI(false);
+                    });
+                } catch (error) {
+                    console.error('MQTT初始化失败:', error);
+                    this.updateStatusUI(false);
+                }
+            },
+			
+						
+		         
+    // 发送MQTT消息：增加deviceId参数
+    sendMessage(deviceId, payload) {
+        if (!this.connected || !this.client) {
+            console.warn('MQTT未连接，无法发送消息');
+            return false;
+        }
+        
+        try {
+            // 从播放器信息中获取当前设备的model（需要先通过deviceId找到对应的播放器）
+        const player = Array.from(appState.players.values()).find(p => p.deviceId === deviceId);
+        if (!player) {
+            console.warn(`未找到设备ID为${deviceId}的播放器信息`);
+            return false;
+        }
+        // 使用player.model作为currentDevice构建主题
+        const topic = `/terminal/${player.model}/${deviceId}/setInfo`;
+            const message = JSON.stringify(payload);
+            this.client.publish(topic, message, { qos: 1 }, (error) => {
+                if (error) {
+                    console.error('MQTT消息发送失败:', error);
+                    return false;
+                }
+                console.log(`MQTT消息发送到主题 ${topic}: ${message}`);
+                return true;
+            });
+        } catch (error) {
+            console.error('MQTT消息处理失败:', error);
+            return false;
+        }
+    },
+            
+            // 更新MQTT状态UI
+            updateStatusUI(connected) {
+                const statusElement = document.getElementById('mqttStatus');
+                const indicatorElement = document.getElementById('mqttIndicator');
+                
+                if (connected) {
+                    statusElement.textContent = '已连接';
+                    indicatorElement.classList.add('mqtt-connected');
+                } else {
+                    statusElement.textContent = '未连接';
+                    indicatorElement.classList.remove('mqtt-connected');
+                }
+            }
+        };
+
+        // 从localStorage读取设备数据和服务器配置
+        function getStoredData() {
+            // 读取设备列表（多设备2.0公网.html中保存的键是'droneDevices'）
+            const devicesStr = localStorage.getItem('droneDevices');
+            const devices = devicesStr ? JSON.parse(devicesStr) : [];
+            
+            // 读取视频服务器地址（需要多设备2.0公网.html补充保存逻辑）
+            const configStr = localStorage.getItem('appConfig');
+            const config = configStr ? JSON.parse(configStr) : {
+                videoServer: '42.236.120.68', // 默认值，防止读取失败
+                mqttServer: '42.236.120.68'   // 添加MQTT服务器默认配置
+            };
+            
+            return { devices, config };
+        }
+        
+// 动态生成视频源（从localStorage数据生成）
+const { devices, config } = getStoredData();
+const videoSources = devices.map(device => ({
+    name: device.name,
+    url: `http://${config.videoServer}:1985/rtc/v1/whep/?app=live&stream=${device.id}.flv`,
+    deviceId: device.id,
+    model: device.model // 从设备数据中提取model作为currentDevice的来源
+}));
+
+        // 检查SRS SDK是否加载成功
+        function checkSrsSdk() {
+            if (typeof SrsRtcWhipWhepAsync === 'undefined') {
+                document.getElementById('sdkError').style.display = 'block';
+                console.error('SRS SDK未加载，请检查srs.sdk.js文件是否存在');
+                return false;
+            }
+            return true;
+        }
+
+        // DOM元素缓存
+        const DOM = {
+            container: document.getElementById('videosContainer'),
+            totalCount: document.getElementById('totalCount'),
+            playingCount: document.getElementById('playingCount'),
+            playAllBtn: document.getElementById('playAllBtn'),
+            stopAllBtn: document.getElementById('stopAllBtn'),
+            layoutInfo: document.getElementById('layoutInfo'),
+            toggleLayoutBtn: document.getElementById('toggleLayoutBtn'),
+			controlCenterBtn: document.getElementById('controlCenterBtn')
+        };
+
+        // 应用状态
+        const appState = {
+            players: new Map(), // 存储所有播放器实例 key: name, value: {sdk, element, isPlaying}
+            total: 0,
+            playing: 0,
+            layoutMode: 'auto' // 'auto', 'single', 'double', 'triple'
+        };
+
+        // 更新统计信息
+        function updateStats() {
+            DOM.totalCount.textContent = appState.total;
+            DOM.playingCount.textContent = appState.playing;
+            
+            // 更新布局信息
+            let layoutText = '自适应';
+            if (appState.layoutMode === 'single') layoutText = '单列';
+            else if (appState.layoutMode === 'double') layoutText = '双列';
+            else if (appState.layoutMode === 'triple') layoutText = '三列';
+            
+            DOM.layoutInfo.textContent = layoutText;
+        }
+
+        // 应用布局
+        function applyLayout() {
+            const container = DOM.container;
+            
+            // 清除现有布局类
+            container.classList.remove('single-layout', 'double-layout', 'triple-layout', 'auto-layout');
+            
+            // 根据当前布局模式应用样式
+            if (appState.layoutMode === 'auto') {
+                // 自适应布局 - 使用CSS媒体查询
+                container.classList.add('auto-layout');
+            } else if (appState.layoutMode === 'single') {
+                container.style.gridTemplateColumns = '1fr';
+                container.classList.add('single-layout');
+            } else if (appState.layoutMode === 'double') {
+                container.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                container.classList.add('double-layout');
+            } else if (appState.layoutMode === 'triple') {
+                container.style.gridTemplateColumns = 'repeat(3, 1fr)';
+                container.classList.add('triple-layout');
+            }
+            
+            updateStats();
+        }
+
+        // 切换布局模式
+        function toggleLayout() {
+            const layouts = ['auto', 'single', 'double', 'triple'];
+            const currentIndex = layouts.indexOf(appState.layoutMode);
+            appState.layoutMode = layouts[(currentIndex + 1) % layouts.length];
+            applyLayout();
+        }
+		
+function controlCenter() {
+    // 提示用户手动关闭（若自动关闭失效）
+    alert('返回控制中心');
+    // 尝试关闭标签
+    setTimeout(() => {
+        window.close();
+    }, 1000);
+}
+        // 视频服务
+        const VideoService = {
+            init() {
+                // 初始化前先检查SDK
+                if (!checkSrsSdk()) return;
+                
+                // 初始化MQTT服务
+                MqttService.init();
+                
+                this.createVideoElements();
+                this.bindEvents();
+                
+                appState.total = videoSources.length;
+                updateStats();
+                
+                // 应用初始布局
+                applyLayout();
+                
+                // 监听窗口大小变化
+                window.addEventListener('resize', () => {
+                    // 如果是自动布局模式，重新应用布局
+                    if (appState.layoutMode === 'auto') {
+                        applyLayout();
+                    }
+                });
+            },
+            
+            // 创建视频元素
+            createVideoElements() {
+                // 如果没有视频源，显示空状态
+                if (videoSources.length === 0) {
+                    const emptyState = document.createElement('div');
+                    emptyState.className = 'empty-state';
+                    emptyState.innerHTML = `
+                        <i class="fa fa-video-slash"></i>
+                        <p>暂无视频设备，请先添加设备</p>
+                    `;
+                    DOM.container.appendChild(emptyState);
+                    return;
+                }
+                
+                videoSources.forEach(source => {
+                    // 创建视频容器
+                    const videoItem = document.createElement('div');
+                    videoItem.className = 'video-item';
+                    videoItem.dataset.name = source.name;
+                    videoItem.dataset.id = source.id;
+                    
+                    // 视频名称
+                    const videoName = document.createElement('div');
+                    videoName.className = 'video-name';
+                    videoName.textContent = source.name;
+                    
+                    // 视频控制按钮容器
+                    const videoControls = document.createElement('div');
+                    videoControls.className = 'video-controls';
+                    
+                    // 播放按钮
+                    const playBtn = document.createElement('button');
+                    playBtn.className = 'video-control-btn play-btn';
+                    playBtn.innerHTML = '<i class="fa fa-play"></i>';
+                    playBtn.title = '播放';
+                    
+                    // 停止按钮
+                    const stopBtn = document.createElement('button');
+                    stopBtn.className = 'video-control-btn stop-btn';
+                    stopBtn.innerHTML = '<i class="fa fa-stop"></i>';
+                    stopBtn.title = '停止';
+                    
+                    // 视频元素
+                    const videoElement = document.createElement('video');
+                    videoElement.autoplay = true;
+                    videoElement.playsInline = true;
+                    videoElement.controls = true;
+                    videoElement.className = 'video-player';
+                    
+                    // 加载状态
+                    const loadingStatus = document.createElement('div');
+                    loadingStatus.className = 'video-status';
+                    loadingStatus.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 加载中...';
+                    loadingStatus.style.display = 'none';
+                    
+                    // 错误状态
+                    const errorStatus = document.createElement('div');
+                    errorStatus.className = 'video-status';
+                    errorStatus.innerHTML = '<i class="fa fa-exclamation-triangle"></i> 加载失败';
+                    errorStatus.style.display = 'none';
+                    
+                    // 组装控制按钮
+                    videoControls.appendChild(playBtn);
+                    videoControls.appendChild(stopBtn);
+                    
+                    // 组装视频容器
+                    videoItem.appendChild(videoName);
+                    videoItem.appendChild(videoControls);
+                    videoItem.appendChild(videoElement);
+                    videoItem.appendChild(loadingStatus);
+                    videoItem.appendChild(errorStatus);
+                    DOM.container.appendChild(videoItem);
+                    
+                    // 为按钮添加点击事件
+                    const self = this;
+                    playBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止事件冒泡到容器
+                        self.playVideo(source.name);
+                    });
+                    
+                    stopBtn.addEventListener('click', (e) => {
+                        e.stopPropagation(); // 阻止事件冒泡到容器
+                        self.stopVideo(source.name);
+                    });
+                    
+                    // 添加点击事件 - 单机切换播放/停止状态
+                    videoItem.addEventListener('click', (e) => {
+                        // 避免点击控制按钮时触发
+                        if (!e.target.closest('video') && !e.target.closest('.video-controls')) {
+                            if (appState.players.get(source.name)?.isPlaying) {
+                                this.stopVideo(source.name);
+                            } else {
+                                this.playVideo(source.name);
+                            }
+                        }
+                    });
+                    
+                    // 初始化播放器状态
+                    appState.players.set(source.name, {
+                        sdk: null,
+                        element: videoElement,
+                        loading: loadingStatus,
+                        error: errorStatus,
+                        url: source.url,
+                        isPlaying: false,
+                        playBtn: playBtn,
+                        stopBtn: stopBtn,
+                         deviceId: source.deviceId, // 这里之前错误使用了source.id，改为source.deviceId
+						 model: source.model // 存储model信息
+                    });
+                });
+            },
+            
+            bindEvents() {
+                // 全部播放
+                DOM.playAllBtn.addEventListener('click', () => {
+                    videoSources.forEach(source => {
+                        if (!appState.players.get(source.name)?.isPlaying) {
+                            this.playVideo(source.name);
+                        }
+                    });
+                });
+                
+                // 全部停止
+                DOM.stopAllBtn.addEventListener('click', () => {
+                    videoSources.forEach(source => {
+                        if (appState.players.get(source.name)?.isPlaying) {
+                            this.stopVideo(source.name);
+                        }
+                    });
+                });
+                
+                // 切换布局controlCenterBtn
+                DOM.toggleLayoutBtn.addEventListener('click', toggleLayout);
+				DOM.controlCenterBtn.addEventListener('click', controlCenter);
+                
+                // 视频错误事件
+                document.querySelectorAll('.video-player').forEach(video => {
+                    video.addEventListener('error', (e) => {
+                        const name = e.target.closest('.video-item').dataset.name;
+                        const player = appState.players.get(name);
+                        if (player) {
+                            console.error(`视频 ${name} 播放错误:`, e);
+                            this.showError(player, '视频播放错误');
+                            player.isPlaying = false;
+                            appState.playing = Math.max(0, appState.playing - 1);
+                            updateStats();
+                        }
+                    });
+                });
+            },
+            
+            // 播放视频
+            playVideo(name) {
+                const player = appState.players.get(name);
+                if (!player || player.isPlaying) return;
+                
+                // 发送MQTT播放指令
+				// 发送MQTT播放指令，使用当前播放器的deviceId
+				MqttService.sendMessage(player.deviceId, { 
+					"dataextratype": 1,
+					"datatype": 68,
+					"datahead": "set device push video stream enable",
+					"datalen": 37,
+					"data": {
+					"push_video_stream_enable": true
+					},
+					"imei": "InF3dWaXQjzH+xZF1fgqCA=="
+				
+				});  // 这里修改了deviceId的来源
+                
+                this.showLoading(player, true);
+                this.showError(player, false);
+                
+                // 关闭当前可能存在的实例
+                if (player.sdk) {
+                    try { player.sdk.close(); } 
+                    catch (e) { console.error(`关闭视频 ${name} 失败:`, e); }
+                }
+                
+                // 创建新的SDK实例
+                player.sdk = new SrsRtcWhipWhepAsync();
+                player.element.srcObject = player.sdk.stream;
+
+                // 播放视频
+                player.sdk.play(player.url, {
+                    videoOnly: true,
+                    audioOnly: false
+                }).then(() => {
+                    console.log(`视频 ${name} 播放成功`);
+                    player.isPlaying = true;
+                    appState.playing++;
+                    this.showLoading(player, false);
+                    updateStats();
+                }).catch((err) => {
+                    console.error(`视频 ${name} 加载失败:`, err);
+                    player.isPlaying = false;
+                    this.showLoading(player, false);
+                    this.showError(player, `加载失败: ${err.message}`);
+                    updateStats();
+                });
+				
+            },
+            
+            // 停止视频
+            stopVideo(name) {
+                const player = appState.players.get(name);
+                if (!player || !player.isPlaying) return;
+                
+    // 发送MQTT停止指令，使用当前播放器的deviceId
+    MqttService.sendMessage(player.deviceId, { 
+		"dataextratype": 1,
+		"datatype": 68,
+		"datahead": "set device push video stream enable",
+		"datalen": 37,
+		"data": {
+		"push_video_stream_enable": false
+		},
+		"imei": "InF3dWaXQjzH+xZF1fgqCA=="
+	});  // 这里修改了deviceId的来源
+                
+                try {
+                    if (player.sdk) {
+                        player.sdk.close();
+                    }
+                    player.element.srcObject = null;
+                    player.isPlaying = false;
+                    appState.playing = Math.max(0, appState.playing - 1);
+                    this.showLoading(player, false);
+                    this.showError(player, false);
+                    console.log(`视频 ${name} 已停止`);
+                } catch (e) {
+                    console.error(`停止视频 ${name} 失败:`, e);
+                } finally {
+                    updateStats();
+                }
+            },
+            
+            showLoading(player, show) {
+                player.loading.style.display = show ? 'block' : 'none';
+            },
+            
+            showError(player, message) {
+                player.error.innerHTML = message ? 
+                    `<i class="fa fa-exclamation-triangle"></i> ${message}` : '';
+                player.error.style.display = message ? 'block' : 'none';
+            }
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            VideoService.init();
+        });
+    </script>
+</body>
+</html>
