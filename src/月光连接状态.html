@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网络拓扑图</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .info-panel {
+            position: absolute;
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid #3b82f6;
+            border-radius: 12px;
+            padding: 16px;
+            color: #e2e8f0;
+            min-width: 280px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            display: none;
+            z-index: 100;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 12px 0;
+            color: #60a5fa;
+            font-size: 16px;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 8px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #94a3b8;
+        }
+
+        .info-value {
+            color: #f1f5f9;
+            font-weight: 500;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            cursor: pointer;
+            color: #94a3b8;
+            font-size: 18px;
+        }
+
+        .close-btn:hover {
+            color: #f1f5f9;
+        }
+
+        .link-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 2px solid #3b82f6;
+        }
+
+        .link-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .send-title {
+            color: #4ade80;
+        }
+
+        .recv-title {
+            color: #f97316;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="infoPanel" class="info-panel"></div>
+
+    <script>
+        // 原始数据
+        // const rawData = [{ "SN": "0623111", "ip": "192.168.2.101", "d10SN": "地面站", "pwr": 27, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "1113160", "snr1": 31, "snr2": 33, "time": 7, "speed": 268, "bler": 0, "rssi1": -49, "rssi2": -56, "distance": 9 }] }, { "SN": "1113368", "ip": "192.168.2.104", "d10SN": "6bbd709db4f0c215", "pwr": 23, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "0623111", "snr1": 26, "snr2": 14, "time": 6, "speed": 1930, "bler": 0, "rssi1": -44, "rssi2": -45, "distance": 19 }, { "SN": "1113160", "snr1": 32, "snr2": 33, "time": 6, "speed": 1930, "bler": 0, "rssi1": -35, "rssi2": -38, "distance": 9 }] }, { "SN": "1113160", "ip": "192.168.2.105", "d10SN": "ef47ee6dd6d90b7f", "pwr": 23, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "1113368", "snr1": 30, "snr2": 1, "time": 7, "speed": 184, "bler": 0, "rssi1": -34, "rssi2": -57, "distance": 9 }, { "SN": "0623111", "snr1": 26, "snr2": 14, "time": 7, "speed": 184, "bler": 0, "rssi1": -51, "rssi2": -37, "distance": 9 }] }];
+        // 测试两个节点的情况（取消注释即可使用）
+        // const rawData = [
+        //     { "SN": "0623111", "ip": "192.168.2.101", "d10SN": "地面站", "pwr": 27, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "1113160", "snr1": 31, "snr2": 33, "time": 7, "speed": 268, "bler": 0, "rssi1": -49, "rssi2": -56, "distance": 9 }] },
+        //     { "SN": "1113160", "ip": "192.168.2.105", "d10SN": "ef47ee6dd6d90b7f", "pwr": 23, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "0623111", "snr1": 26, "snr2": 14, "time": 7, "speed": 184, "bler": 0, "rssi1": -51, "rssi2": -37, "distance": 9 }] }
+        // ];
+        const rawData = [{ "SN": "0623111", "ip": "192.168.2.101", "d10SN": "地面站", "pwr": 27, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "1113160", "snr1": 31, "snr2": 33, "time": 7, "speed": 268, "bler": 0, "rssi1": -49, "rssi2": -56, "distance": 9 }] }, { "SN": "1113368", "ip": "192.168.2.104", "d10SN": "6bbd709db4f0c215", "pwr": 23, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "1113160", "snr1": 26, "snr2": 14, "time": 6, "speed": 1930, "bler": 0, "rssi1": -44, "rssi2": -45, "distance": 19 }] }, { "SN": "1113160", "ip": "192.168.2.105", "d10SN": "ef47ee6dd6d90b7f", "pwr": 23, "health_state": 0, "freq": 14800, "bw": 5, "neighborNodes": [{ "SN": "1113368", "snr1": 30, "snr2": 1, "time": 7, "speed": 184, "bler": 0, "rssi1": -34, "rssi2": -57, "distance": 9 }, { "SN": "0623111", "snr1": 26, "snr2": 14, "time": 7, "speed": 184, "bler": 0, "rssi1": -51, "rssi2": -37, "distance": 9 }] }];
+        // 带宽映射
+        const bwMap = { 0: '1.4M', 1: '3M', 2: '5M', 3: '10M', 4: '15M', 5: '20M' };
+
+        // 健康状态颜色
+        const healthColors = { 0: '#22c55e', 1: '#f97316', 2: '#ef4444' };
+        const healthText = { 0: '良好 (速率>1)', 1: '警告 (0.8≤速率≤1)', 2: '异常 (速率<0.8)' };
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const infoPanel = document.getElementById('infoPanel');
+
+        let width, height;
+        let nodes = [];
+        let links = [];
+        let hoveredNode = null;
+        let hoveredLink = null;
+        let selectedNode = null;
+        let selectedLink = null;
+
+        // 初始化画布大小
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            calculateNodePositions();
+            draw();
+        }
+
+        // 解析数据
+        function parseData() {
+            nodes = rawData.map((node, index) => ({
+                ...node,
+                x: 0,
+                y: 0,
+                radius: 40,
+                index
+            }));
+
+            links = [];
+            rawData.forEach(node => {
+                node.neighborNodes.forEach(neighbor => {
+                    const targetNode = rawData.find(n => n.SN === neighbor.SN);
+                    if (targetNode) {
+                        links.push({
+                            source: node.SN,
+                            target: neighbor.SN,
+                            data: neighbor
+                        });
+                    }
+                });
+            });
+        }
+
+        // 计算节点位置（圆形布局）
+        function calculateNodePositions() {
+            const centerX = width / 2;
+            const centerY = height / 2;
+
+            if (nodes.length === 1) {
+                // 单个节点居中
+                nodes[0].x = centerX;
+                nodes[0].y = centerY;
+            } else if (nodes.length === 2) {
+                // 两个节点水平排列，保持适当距离
+                const distance = Math.min(width, height) * 0.4;
+                nodes[0].x = centerX - distance / 2;
+                nodes[0].y = centerY;
+                nodes[1].x = centerX + distance / 2;
+                nodes[1].y = centerY;
+            } else {
+                // 三个或更多节点使用圆形布局
+                const radius = Math.min(width, height) * 0.3;
+                nodes.forEach((node, i) => {
+                    const angle = (i * 2 * Math.PI / nodes.length) - Math.PI / 2;
+                    node.x = centerX + radius * Math.cos(angle);
+                    node.y = centerY + radius * Math.sin(angle);
+                });
+            }
+        }
+
+        // 获取节点
+        function getNode(sn) {
+            return nodes.find(n => n.SN === sn);
+        }
+
+        // 绘制链路
+        function drawLinks() {
+            const linkPairs = {};
+
+            links.forEach(link => {
+                const key = [link.source, link.target].sort().join('-');
+                if (!linkPairs[key]) {
+                    linkPairs[key] = [];
+                }
+                linkPairs[key].push(link);
+            });
+
+            Object.values(linkPairs).forEach(pair => {
+                pair.forEach((link, idx) => {
+                    const sourceNode = getNode(link.source);
+                    const targetNode = getNode(link.target);
+                    if (!sourceNode || !targetNode) return;
+
+                    const dx = targetNode.x - sourceNode.x;
+                    const dy = targetNode.y - sourceNode.y;
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    const nx = -dy / len;
+                    const ny = dx / len;
+                    const offset = 8;
+                    const sign = idx === 0 ? 1 : -1;
+
+                    const x1 = sourceNode.x + nx * offset * sign;
+                    const y1 = sourceNode.y + ny * offset * sign;
+                    const x2 = targetNode.x + nx * offset * sign;
+                    const y2 = targetNode.y + ny * offset * sign;
+
+                    // 存储链路位置用于点击检测
+                    link.x1 = x1; link.y1 = y1;
+                    link.x2 = x2; link.y2 = y2;
+
+                    const isHovered = hoveredLink === link;
+                    const isSelected = selectedLink === link;
+
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+
+                    const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
+                    if (isSelected) {
+                        gradient.addColorStop(0, '#fbbf24');
+                        gradient.addColorStop(1, '#f59e0b');
+                        ctx.lineWidth = 4;
+                    } else if (isHovered) {
+                        gradient.addColorStop(0, '#60a5fa');
+                        gradient.addColorStop(1, '#3b82f6');
+                        ctx.lineWidth = 3;
+                    } else {
+                        gradient.addColorStop(0, '#4ade80');
+                        gradient.addColorStop(1, '#22c55e');
+                        ctx.lineWidth = 2;
+                    }
+
+                    ctx.strokeStyle = gradient;
+                    ctx.stroke();
+
+                    // 绘制箭头
+                    const arrowLen = 12;
+                    const arrowAngle = Math.PI / 6;
+                    const angle = Math.atan2(y2 - y1, x2 - x1);
+
+                    const arrowX = x2 - (dx / len) * (targetNode.radius + 5);
+                    const arrowY = y2 - (dy / len) * (targetNode.radius + 5);
+
+                    ctx.beginPath();
+                    ctx.moveTo(arrowX, arrowY);
+                    ctx.lineTo(
+                        arrowX - arrowLen * Math.cos(angle - arrowAngle),
+                        arrowY - arrowLen * Math.sin(angle - arrowAngle)
+                    );
+                    ctx.moveTo(arrowX, arrowY);
+                    ctx.lineTo(
+                        arrowX - arrowLen * Math.cos(angle + arrowAngle),
+                        arrowY - arrowLen * Math.sin(angle + arrowAngle)
+                    );
+                    ctx.strokeStyle = isSelected ? '#f59e0b' : (isHovered ? '#3b82f6' : '#22c55e');
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+            });
+        }
+
+        // 绘制节点
+        function drawNodes() {
+            nodes.forEach(node => {
+                const isHovered = hoveredNode === node;
+                const isSelected = selectedNode === node;
+                const radius = node.radius + (isHovered ? 5 : 0);
+
+                // 外圈光晕
+                if (isSelected || isHovered) {
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, radius + 10, 0, Math.PI * 2);
+                    const glow = ctx.createRadialGradient(node.x, node.y, radius, node.x, node.y, radius + 15);
+                    glow.addColorStop(0, isSelected ? 'rgba(251, 191, 36, 0.4)' : 'rgba(96, 165, 250, 0.4)');
+                    glow.addColorStop(1, 'transparent');
+                    ctx.fillStyle = glow;
+                    ctx.fill();
+                }
+
+                // 节点背景
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(node.x - 10, node.y - 10, 0, node.x, node.y, radius);
+                gradient.addColorStop(0, '#475569');
+                gradient.addColorStop(1, '#1e293b');
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // 节点边框（根据健康状态）
+                ctx.strokeStyle = healthColors[node.health_state];
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // 节点SN文字
+                ctx.fillStyle = '#f1f5f9';
+                ctx.font = 'bold 14px Microsoft YaHei';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.SN, node.x, node.y - 8);
+
+                // D10SN或名称
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px Microsoft YaHei';
+                const displayName = node.d10SN.length > 10 ? node.d10SN.substring(0, 8) + '...' : node.d10SN;
+                ctx.fillText(displayName, node.x, node.y + 10);
+            });
+        }
+
+        // 主绘制函数
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+            drawLinks();
+            drawNodes();
+        }
+
+        // 检测点击节点
+        function getNodeAtPosition(x, y) {
+            for (let i = nodes.length - 1; i >= 0; i--) {
+                const node = nodes[i];
+                const dx = x - node.x;
+                const dy = y - node.y;
+                if (dx * dx + dy * dy < node.radius * node.radius) {
+                    return node;
+                }
+            }
+            return null;
+        }
+
+        // 检测点击链路
+        function getLinkAtPosition(x, y) {
+            const threshold = 10;
+            for (const link of links) {
+                if (!link.x1) continue;
+                const dx = link.x2 - link.x1;
+                const dy = link.y2 - link.y1;
+                const len = Math.sqrt(dx * dx + dy * dy);
+
+                const t = Math.max(0, Math.min(1, ((x - link.x1) * dx + (y - link.y1) * dy) / (len * len)));
+                const projX = link.x1 + t * dx;
+                const projY = link.y1 + t * dy;
+
+                const dist = Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
+                if (dist < threshold) {
+                    return link;
+                }
+            }
+            return null;
+        }
+
+        // 显示节点信息
+        function showNodeInfo(node, x, y) {
+            const html = `
+                <span class="close-btn" onclick="closePanel()">✕</span>
+                <h3>📡 节点信息</h3>
+                <div class="info-row"><span class="info-label">节点SN</span><span class="info-value">${node.SN}</span></div>
+                <div class="info-row"><span class="info-label">IP地址</span><span class="info-value">${node.ip}</span></div>
+                <div class="info-row"><span class="info-label">D10 SN</span><span class="info-value" style="font-size:12px;">${node.d10SN}</span></div>
+                <div class="info-row"><span class="info-label">发送功率</span><span class="info-value">${node.pwr} dBm</span></div>
+                <div class="info-row"><span class="info-label">健康状态</span><span class="info-value" style="color:${healthColors[node.health_state]}">${healthText[node.health_state]}</span></div>
+                <div class="info-row"><span class="info-label">中心频率</span><span class="info-value">${node.freq} MHz</span></div>
+                <div class="info-row"><span class="info-label">带宽</span><span class="info-value">${bwMap[node.bw]}</span></div>
+                <div class="info-row"><span class="info-label">邻节点数</span><span class="info-value">${node.neighborNodes.length} 个</span></div>
+            `;
+            showPanel(html, x, y);
+        }
+
+        // 显示链路信息
+        function showLinkInfo(link, x, y) {
+            const sourceNode = getNode(link.source);
+            const targetNode = getNode(link.target);
+
+            // 找到反向链路
+            const reverseLink = links.find(l => l.source === link.target && l.target === link.source);
+
+            let html = `
+                <span class="close-btn" onclick="closePanel()">✕</span>
+                <h3>🔗 链路信息</h3>
+                <div class="link-section">
+                    <div class="link-title send-title">📤 发送方向: ${link.source} → ${link.target}</div>
+                    <div class="info-row"><span class="info-label">天线1 SNR</span><span class="info-value">${link.data.snr1} dB</span></div>
+                    <div class="info-row"><span class="info-label">天线2 SNR</span><span class="info-value">${link.data.snr2} dB</span></div>
+                    <div class="info-row"><span class="info-label">天线1 RSSI</span><span class="info-value">${link.data.rssi1} dBm</span></div>
+                    <div class="info-row"><span class="info-label">天线2 RSSI</span><span class="info-value">${link.data.rssi2} dBm</span></div>
+                    <div class="info-row"><span class="info-label">发送速率</span><span class="info-value">${link.data.speed} bps</span></div>
+                    <div class="info-row"><span class="info-label">空中时间</span><span class="info-value">${link.data.time}</span></div>
+                    <div class="info-row"><span class="info-label">误码率</span><span class="info-value">${link.data.bler}%</span></div>
+                    <div class="info-row"><span class="info-label">距离</span><span class="info-value">${link.data.distance} 米</span></div>
+                </div>
+            `;
+
+            if (reverseLink) {
+                html += `
+                <div class="link-section">
+                    <div class="link-title recv-title">📥 接收方向: ${reverseLink.source} → ${reverseLink.target}</div>
+                    <div class="info-row"><span class="info-label">天线1 SNR</span><span class="info-value">${reverseLink.data.snr1} dB</span></div>
+                    <div class="info-row"><span class="info-label">天线2 SNR</span><span class="info-value">${reverseLink.data.snr2} dB</span></div>
+                    <div class="info-row"><span class="info-label">天线1 RSSI</span><span class="info-value">${reverseLink.data.rssi1} dBm</span></div>
+                    <div class="info-row"><span class="info-label">天线2 RSSI</span><span class="info-value">${reverseLink.data.rssi2} dBm</span></div>
+                    <div class="info-row"><span class="info-label">发送速率</span><span class="info-value">${reverseLink.data.speed} bps</span></div>
+                    <div class="info-row"><span class="info-label">空中时间</span><span class="info-value">${reverseLink.data.time}</span></div>
+                    <div class="info-row"><span class="info-label">误码率</span><span class="info-value">${reverseLink.data.bler}%</span></div>
+                    <div class="info-row"><span class="info-label">距离</span><span class="info-value">${reverseLink.data.distance} 米</span></div>
+                </div>
+                `;
+            }
+
+            showPanel(html, x, y);
+        }
+
+        // 显示面板
+        function showPanel(html, x, y) {
+            infoPanel.innerHTML = html;
+            infoPanel.style.display = 'block';
+
+            // 调整位置避免超出屏幕
+            const panelRect = infoPanel.getBoundingClientRect();
+            let left = x + 15;
+            let top = y + 15;
+
+            if (left + panelRect.width > width) {
+                left = x - panelRect.width - 15;
+            }
+            if (top + panelRect.height > height) {
+                top = height - panelRect.height - 15;
+            }
+
+            infoPanel.style.left = left + 'px';
+            infoPanel.style.top = top + 'px';
+        }
+
+        // 关闭面板
+        function closePanel() {
+            infoPanel.style.display = 'none';
+            selectedNode = null;
+            selectedLink = null;
+            draw();
+        }
+        window.closePanel = closePanel;
+
+        // 鼠标移动事件
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const node = getNodeAtPosition(x, y);
+            const link = node ? null : getLinkAtPosition(x, y);
+
+            const needRedraw = hoveredNode !== node || hoveredLink !== link;
+            hoveredNode = node;
+            hoveredLink = link;
+
+            canvas.style.cursor = (node || link) ? 'pointer' : 'default';
+
+            if (needRedraw) {
+                draw();
+            }
+        });
+
+        // 点击事件
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const node = getNodeAtPosition(x, y);
+            if (node) {
+                selectedNode = node;
+                selectedLink = null;
+                showNodeInfo(node, e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            const link = getLinkAtPosition(x, y);
+            if (link) {
+                selectedLink = link;
+                selectedNode = null;
+                showLinkInfo(link, e.clientX, e.clientY);
+                draw();
+                return;
+            }
+
+            // 点击空白处关闭面板
+            closePanel();
+        });
+
+        // 初始化
+        parseData();
+        window.addEventListener('resize', resize);
+        resize();
+    </script>
+</body>
+
+</html>
