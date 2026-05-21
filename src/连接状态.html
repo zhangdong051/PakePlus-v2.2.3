@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设备监控面板</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        /* 浮动小窗口样式 */
+        #floatingWindow {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            overflow: hidden;
+            border: 1px solid #ddd;
+        }
+        
+        .window-header {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 15px;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .window-title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .window-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .window-control {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .window-content {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .data-label {
+            font-weight: bold;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .data-value {
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        
+        .connection-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .device-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            #floatingWindow {
+                position: relative;
+                top: auto;
+                right: auto;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>设备网络状态监控</h1>
+            <div id="connectionStatus" class="connection-status disconnected">
+                未连接到MQTT服务器
+            </div>
+        </div>
+        
+        <div id="deviceContainer">
+            <!-- 主内容区域将在这里显示设备信息 -->
+        </div>
+    </div>
+
+    <!-- 浮动小窗口 -->
+    <div id="floatingWindow">
+        <div class="window-header" id="windowHeader">
+            <div class="window-title">设备状态概览</div>
+            <div class="window-controls">
+                <button class="window-control" id="minimizeBtn">−</button>
+                <button class="window-control" id="closeBtn">×</button>
+            </div>
+        </div>
+        <div class="window-content" id="windowContent">
+            <div class="data-item">
+                <div class="data-label">❌ 设备识别码</div>
+                <div class="data-value" id="d10SN">--</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">ℹ️ 节点SN</div>
+                <div class="data-value" id="sn">--</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">ℹ️ SNR1</div>
+                <div class="data-value" id="snr1">-- dB</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">🌏 SNR2</div>
+                <div class="data-value" id="snr2">-- dB</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">🖱️ RSSI1</div>
+                <div class="data-value" id="rssi1">-- dBm</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">🌐 RSSI2</div>
+                <div class="data-value" id="rssi2">-- dBm</div>
+            </div>
+            <div class="data-item">
+                <div class="data-label">📶 距离</div>
+                <div class="data-value" id="distance">-- m</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MQTT配置
+        const MQTT_CONFIG = {
+            brokerUrl: 'ws://192.168.2.100:28083/mqtt',
+            topic: '/terminal/dmz/data',
+            options: {
+                clientId: 'web_client_' + Math.random().toString(16).substr(2, 8),
+                clean: true,
+                connectTimeout: 4000,
+                reconnectPeriod: 3000
+            }
+        };
+
+        // 浮动窗口管理
+        class FloatingWindow {
+            constructor() {
+                this.window = document.getElementById('floatingWindow');
+                this.header = document.getElementById('windowHeader');
+                this.content = document.getElementById('windowContent');
+                this.isMinimized = false;
+                this.isDragging = false;
+                this.dragOffset = { x: 0, y: 0 };
+                
+                this.init();
+            }
+            
+            init() {
+                // 拖动功能
+                this.header.addEventListener('mousedown', (e) => {
+                    this.startDragging(e);
+                });
+                
+                document.addEventListener('mousemove', (e) => {
+                    this.dragging(e);
+                });
+                
+                document.addEventListener('mouseup', () => {
+                    this.stopDragging();
+                });
+                
+                // 窗口控制
+                document.getElementById('minimizeBtn').addEventListener('click', () => {
+                    this.toggleMinimize();
+                });
+                
+                document.getElementById('closeBtn').addEventListener('click', () => {
+                    this.close();
+                });
+            }
+            
+            startDragging(e) {
+                this.isDragging = true;
+                const rect = this.window.getBoundingClientRect();
+                this.dragOffset.x = e.clientX - rect.left;
+                this.dragOffset.y = e.clientY - rect.top;
+                this.window.style.transition = 'none';
+            }
+            
+            dragging(e) {
+                if (!this.isDragging) return;
+                
+                const x = e.clientX - this.dragOffset.x;
+                const y = e.clientY - this.dragOffset.y;
+                
+                // 限制窗口不超出视口
+                const maxX = window.innerWidth - this.window.offsetWidth;
+                const maxY = window.innerHeight - this.window.offsetHeight;
+                
+                this.window.style.left = Math.max(0, Math.min(x, maxX)) + 'px';
+                this.window.style.top = Math.max(0, Math.min(y, maxY)) + 'px';
+            }
+            
+            stopDragging() {
+                this.isDragging = false;
+                this.window.style.transition = 'all 0.3s ease';
+            }
+            
+            toggleMinimize() {
+                this.isMinimized = !this.isMinimized;
+                if (this.isMinimized) {
+                    this.content.style.display = 'none';
+                    this.window.style.height = this.header.offsetHeight + 'px';
+                } else {
+                    this.content.style.display = 'block';
+                    this.window.style.height = 'auto';
+                }
+            }
+            
+            close() {
+                this.window.style.display = 'none';
+            }
+            
+            // 更新小窗口中的数据
+            updateData(device, neighbor) {
+                if (device && neighbor) {
+                    document.getElementById('d10SN').textContent = device.d10SN || '未知';
+                    document.getElementById('sn').textContent = neighbor.SN || '未知';
+                    document.getElementById('snr1').textContent = (neighbor.snr1 || 0) + ' dB';
+                    document.getElementById('snr2').textContent = (neighbor.snr2 || 0) + ' dB';
+                    document.getElementById('rssi1').textContent = (neighbor.rssi1 || 0) + ' dBm';
+                    document.getElementById('rssi2').textContent = (neighbor.rssi2 || 0) + ' dBm';
+                    document.getElementById('distance').textContent = (neighbor.distance || 0) + ' m';
+                }
+            }
+        }
+
+        // MQTT监控类
+        class MQTTMonitor {
+            constructor() {
+                this.client = null;
+                this.isConnected = false;
+                this.floatingWindow = new FloatingWindow();
+            }
+            
+            connect() {
+                try {
+                    this.updateStatus('正在连接MQTT服务器...', 'disconnected');
+                    
+                    this.client = mqtt.connect(MQTT_CONFIG.brokerUrl, MQTT_CONFIG.options);
+                    
+                    this.client.on('connect', () => {
+                        console.log('成功连接到MQTT服务器');
+                        this.isConnected = true;
+                        this.updateStatus('已连接到MQTT服务器', 'connected');
+                        this.subscribeToTopic();
+                    });
+                    
+                    this.client.on('message', (topic, message) => {
+                        this.handleMessage(topic, message.toString());
+                    });
+                    
+                    this.client.on('error', (error) => {
+                        console.error('MQTT连接错误:', error);
+                        this.updateStatus('连接失败: ' + error.message, 'disconnected');
+                    });
+                    
+                } catch (error) {
+                    console.error('初始化错误:', error);
+                    this.updateStatus('初始化错误: ' + error.message, 'disconnected');
+                }
+            }
+            
+            subscribeToTopic() {
+                if (this.client && this.isConnected) {
+                    this.client.subscribe(MQTT_CONFIG.topic, (err) => {
+                        if (err) {
+                            console.error('订阅失败:', err);
+                            this.updateStatus('订阅主题失败', 'disconnected');
+                        } else {
+                            console.log('成功订阅主题:', MQTT_CONFIG.topic);
+                            this.updateStatus(`已连接 - 监听主题: ${MQTT_CONFIG.topic}`, 'connected');
+                        }
+                    });
+                }
+            }
+            
+            handleMessage(topic, message) {
+                try {
+                    const data = JSON.parse(message);
+                    this.processData(Array.isArray(data) ? data : [data]);
+                } catch (error) {
+                    console.error('解析消息错误:', error);
+                }
+            }
+            
+					processData(devices) {
+			if (!devices || devices.length === 0) return;
+			
+			// 筛选出d10SN为"6bbd709db4f0c215"的设备
+			const targetDevice = devices.find(device => device.d10SN === "6bbd709db4f0c215");
+			// 如果找不到目标设备，仍使用第一个设备作为 fallback
+			const displayDevice = targetDevice || devices[0];
+			
+			// 取该设备的第一个邻居节点
+			const firstNeighbor = displayDevice.neighborNodes && displayDevice.neighborNodes.length > 0 
+				? displayDevice.neighborNodes[0] 
+				: null;
+			
+			// 更新浮动小窗口
+			this.floatingWindow.updateData(displayDevice, firstNeighbor);
+			
+			// 同时更新主内容区域（保持原有功能）
+			this.renderMainContent(devices);
+		}
+					
+            renderMainContent(devices) {
+                const container = document.getElementById('deviceContainer');
+                
+                container.innerHTML = devices.map(device => `
+                    <div class="device-card">
+                        <h3>设备识别码: ${device.d10SN}</h3>
+                        <p>SN: ${device.SN} | IP: ${device.ip} | 频率: ${device.freq} Hz</p>
+                        
+                        ${device.neighborNodes && device.neighborNodes.length > 0 ? `
+                            <h4>邻居节点 (${device.neighborNodes.length})</h4>
+                            <div>
+                                ${device.neighborNodes.map(neighbor => `
+                                    <div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                                        <strong>节点SN: ${neighbor.SN}</strong><br>
+                                        SNR1: ${neighbor.snr1} dB, SNR2: ${neighbor.snr2} dB<br>
+                                        RSSI1: ${neighbor.rssi1} dBm, RSSI2: ${neighbor.rssi2} dBm<br>
+                                        距离: ${neighbor.distance} m
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : '<p>无邻居节点数据</p>'}
+                    </div>
+                `).join('');
+            }
+            
+            updateStatus(message, status) {
+                const statusElement = document.getElementById('connectionStatus');
+                statusElement.textContent = message;
+                statusElement.className = `connection-status ${status}`;
+            }
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            window.mqttMonitor = new MQTTMonitor();
+            window.mqttMonitor.connect();
+        });
+    </script>
+</body>
+</html>
