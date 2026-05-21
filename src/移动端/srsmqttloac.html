@@ -1,0 +1,1415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>尖兵系统-位置监控</title>
+    <link rel="stylesheet" href="css/all.min.css">
+    <script src="mqtt.min.js"></script>
+	<script src="coordtransform.js"></script>
+    <style>
+        /* 保持原有样式不变 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: #fff;
+            min-height: 100vh;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .online {
+            background-color: #4CAF50;
+        }
+        
+        .offline {
+            background-color: #f44336;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+        }
+        
+        .map-container {
+            height: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .video-container {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .video-wrapper {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            width: 100%;
+            max-width: 800px;
+            height: 350px;
+        }
+        
+        .video-wrapper h3 {
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            z-index: 1;
+        }
+        
+        .video-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .controls-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            flex: 1;
+            min-width: 120px;
+            justify-content: center;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-stop {
+            background: linear-gradient(to right, #e74c3c, #c0392b);
+        }
+        
+        .btn-success {
+            background: linear-gradient(to right, #2ecc71, #27ae60);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(to right, #7b4397, #dc2430);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .settings-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: all 0.3s;
+        }
+        
+        .settings-btn:hover {
+            transform: scale(1.08);
+            box-shadow: 0 3px 8px rgba(52, 152, 219, 0.6);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .settings-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 1px 4px rgba(52, 152, 219, 0.4);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: rgba(30, 30, 40, 0.95);
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .close-modal {
+            font-size: 1.8rem;
+            cursor: pointer;
+            color: #e74c3c;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 15px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 10px;
+        }
+        
+        .map-error {
+            text-align: center;
+            padding: 20px;
+            color: #ff6b6b;
+        }
+        
+        .status-message {
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+            font-size: 0.9rem;
+        }
+        
+        .status-message.success {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid rgba(40, 167, 69, 0.5);
+        }
+        
+        .status-message.error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.5);
+        }
+        
+        .status-message.info {
+            background: rgba(23, 162, 184, 0.2);
+            border: 1px solid rgba(23, 162, 184, 0.5);
+        }
+        
+        .debug-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            display: none;
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            border-bottom: 2px solid #3498db;
+            color: #3498db;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @media (min-width: 768px) {
+            .container {
+                max-width: 900px;
+            }
+            
+            .controls-container {
+                flex-wrap: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2><i class="fas fa-satellite"></i> 尖兵系统-位置监控</h2>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-indicator offline" id="mqtt-status"></span>
+                    <span>MQ</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator offline" id="gps-status"></span>
+                    <span>GPS</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-indicator offline" id="video-status"></span>
+                    <span>VID</span>
+                </div>
+                <div class="settings-btn">
+                    <i class="fas fa-cog fa-2x"></i>
+                </div>
+            </div>
+
+        </header>
+        
+        <div class="card">
+            <div id="map-container" class="map-container">
+                <div class="map-error" id="map-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>高德地图加载中...</p>
+                </div>
+            </div>
+            <div class="controls-container">
+                <button id="get-location-btn" class="btn">
+                    <i class="fas fa-location-arrow"></i> 获取位置
+                </button>
+                <button id="send-data-btn" class="btn btn-success">
+                    <i class="fas fa-paper-plane"></i> 发送位置
+                </button>
+                <button id="auto-send-btn" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> 自动发送
+                </button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="video-container">
+                <div class="video-wrapper">
+                    <h3>本地预览</h3>
+                    <video id="local-video" autoplay playsinline muted></video>
+                    <div class="video-label">摄像头推流</div>
+                </div>
+            </div>
+            <div class="controls-container">
+                <button id="publish-btn" class="btn">
+                    <i class="fas fa-play"></i> 开始推流
+                </button>
+                <button id="stop-btn" class="btn btn-stop" disabled>
+                    <i class="fas fa-stop"></i> 停止推流
+                </button>
+                <button id="mute-audio-btn" class="btn">
+                    <i class="fas fa-microphone"></i> 静音音频
+                </button>
+                <button id="mute-video-btn" class="btn">
+                    <i class="fas fa-video"></i> 关闭视频
+                </button>
+            </div>
+            <div id="stream-status" class="status-message">
+                <i class="fas fa-info-circle"></i> <span id="stream-status-text">准备就绪</span>
+            </div>
+            <div id="debug-log" class="debug-panel">
+                调试信息将显示在这里...
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>系统状态: <span id="system-status">初始化中</span> | 最后更新: <span id="last-update">-</span></p>
+        </div>
+    </div>
+    
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-server"></i> 服务器设置</h2>
+                <div class="close-modal">&times;</div>
+            </div>
+            
+            <div class="tab-container">
+                <div class="tab active" data-tab="mqtt">MQTT设置</div>
+                <div class="tab" data-tab="srs">SRS推流设置</div>
+            </div>
+            
+            <div id="mqtt-tab" class="tab-content active">
+                <div class="form-group">
+                    <label for="mqtt-server">MQTT服务器地址</label>
+                    <input type="text" id="mqtt-server" placeholder="例如: 192.168.2.100:8083" value="42.236.69.54:8083">
+                </div>
+                <div class="form-group">
+                    <label for="device-id">人员标识符</label>
+                    <input type="text" id="device-id" placeholder="例如: ZhangSan" value="zs1">
+                </div>
+            </div>
+            
+            <div id="srs-tab" class="tab-content">
+                <div class="form-group">
+                    <label for="srs-server">SRS服务器地址</label>
+                    <input type="text" id="srs-server" placeholder="例如: http://42.236.120.68:1985" value="http://42.236.120.68:1985">
+                </div>
+                <!-- 已移除应用名称和流名称设置 -->
+            </div>
+            
+            <button id="save-settings-btn" class="btn btn-success" style="width:100%; margin-top: 15px;">
+                <i class="fas fa-save"></i> 保存设置
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 页面元素
+        const mapContainer = document.getElementById('map-container');
+        const mapError = document.getElementById('map-error');
+        const getLocationBtn = document.getElementById('get-location-btn');
+        const sendDataBtn = document.getElementById('send-data-btn');
+        const autoSendBtn = document.getElementById('auto-send-btn');
+        const publishBtn = document.getElementById('publish-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const muteAudioBtn = document.getElementById('mute-audio-btn');
+        const muteVideoBtn = document.getElementById('mute-video-btn');
+        const localVideo = document.getElementById('local-video');
+        const settingsBtn = document.querySelector('.settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeModal = document.querySelector('.close-modal');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const mqttServerInput = document.getElementById('mqtt-server');
+        const srsServerInput = document.getElementById('srs-server');
+        const deviceIdInput = document.getElementById('device-id');
+		const srsStreamInput = document.getElementById('device-id');
+        const systemStatus = document.getElementById('system-status');
+        const lastUpdate = document.getElementById('last-update');
+        const mqttStatusIndicator = document.getElementById('mqtt-status');
+        const gpsStatusIndicator = document.getElementById('gps-status');
+        const videoStatusIndicator = document.getElementById('video-status');
+        const streamStatus = document.getElementById('stream-status');
+        const streamStatusText = document.getElementById('stream-status-text');
+        const debugLog = document.getElementById('debug-log');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+		const srsAppInput = "live";
+        
+        // 全局变量
+        let map = null;
+        let marker = null;
+        let currentPosition = null;
+        let mqttClient = null;
+        let isMapLoaded = false;
+        
+        // SRS WebRTC相关变量
+        let localStream = null;
+        let peerConnection = null;
+        let audioTrack = null;
+        let videoTrack = null;
+        let audioEnabled = true;
+        let videoEnabled = true;
+        let isStreaming = false;
+        
+        // 权限状态变量
+        let hasMediaPermission = false;
+        let hasLocationPermission = false;
+        // 位置发送定时器
+        let locationSendTimer = null;
+        let isAutoSending = false;
+        
+        // 从本地存储加载设置
+        function loadSettingsFromLocalStorage() {
+            try {
+                const savedSettings = localStorage.getItem('appSettings');
+                if (savedSettings) {
+                    const settings = JSON.parse(savedSettings);
+                    
+                    // 填充到输入框，如果有保存的值则使用保存的值，否则使用默认值
+                    if (settings.mqttServer) {
+                        mqttServerInput.value = settings.mqttServer;
+                    }
+                    if (settings.deviceId) {
+                        deviceIdInput.value = settings.deviceId;
+                    }
+                    if (settings.srsServer) {
+                        srsServerInput.value = settings.srsServer;
+                    }
+                    
+                    addDebugLog('已从本地存储加载设置');
+                } else {
+                    addDebugLog('本地存储中没有找到设置，将使用默认值');
+                }
+            } catch (error) {
+                console.error('加载本地存储设置失败:', error);
+                addDebugLog(`加载本地存储设置失败: ${error.message}`);
+            }
+        }
+        
+        // 保存设置到本地存储
+        function saveSettingsToLocalStorage() {
+            try {
+                const settings = {
+                    mqttServer: mqttServerInput.value.trim(),
+                    deviceId: deviceIdInput.value.trim(),
+                    srsServer: srsServerInput.value.trim()
+                };
+                
+                localStorage.setItem('appSettings', JSON.stringify(settings));
+                addDebugLog('设置已保存到本地存储');
+                return true;
+            } catch (error) {
+                console.error('保存设置到本地存储失败:', error);
+                addDebugLog(`保存设置到本地存储失败: ${error.message}`);
+                return false;
+            }
+        }
+		
+        // 页面加载完成后自动初始化
+        window.addEventListener('load', async () => {
+            systemStatus.textContent = '正在初始化...';
+            
+            // 加载本地存储的设置
+            loadSettingsFromLocalStorage();
+            
+            // 并行初始化各项服务
+            try {
+                await Promise.all([
+                    loadAMap(),       // 加载地图
+                    initMQTT(),       // 初始化MQTT
+                    requestAllPermissions()  // 请求所有权限
+                ]);
+                
+                // 初始化地图
+                initMap();
+                
+                systemStatus.textContent = '初始化完成';
+                updateLastUpdateTime();
+            } catch (error) {
+                console.error('初始化失败:', error);
+                systemStatus.textContent = '初始化失败';
+                updateStatus(`初始化失败: ${error.message}`, 'error');
+            }
+            // 添加按钮事件监听器
+            initEventListeners();
+        });
+        
+        // 请求所有必要权限
+        async function requestAllPermissions() {
+            try {
+                // 先请求媒体权限（相机和麦克风）
+                //await requestMediaPermission();
+                
+                // 再请求位置权限
+                await requestLocationPermission();
+				                // 先请求媒体权限（相机和麦克风）
+                await requestMediaPermission();
+                
+                showStreamStatus('所有权限已获取', 'success');
+            } catch (error) {
+                console.warn('部分权限获取失败:', error);
+                showStreamStatus(`权限获取部分失败: ${error.message}`, 'info');
+            }
+        }
+        
+        // 请求媒体设备权限（相机和麦克风）
+        async function requestMediaPermission() {
+            if (hasMediaPermission && localStream) {
+                return true; // 已获取权限
+            }
+            
+            try {
+                showStreamStatus('正在请求摄像头和麦克风权限...', 'info');
+                
+                const constraints = {
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                    },
+                    video: {
+                        width: { min: 640, ideal: 1280, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 },
+                        frameRate: { ideal: 30, max: 60 },
+                        aspectRatio: 16/9
+                    }
+                };
+                
+                localStream = await navigator.mediaDevices.getUserMedia(constraints);
+                localVideo.srcObject = localStream;
+                
+                // 获取音视频轨道用于后续控制
+                audioTrack = localStream.getAudioTracks()[0];
+                videoTrack = localStream.getVideoTracks()[0];
+                
+                hasMediaPermission = true;
+                showStreamStatus('媒体设备权限获取成功', 'success');
+                return true;
+            } catch (error) {
+                console.error('获取媒体设备权限失败:', error);
+                showStreamStatus(`获取媒体设备权限失败: ${error.message}`, 'error');
+                hasMediaPermission = false;
+                throw error;
+            }
+        }
+		
+		
+		// 添加获取设备电量的函数
+async function getBatteryLevel() {
+    try {
+        if (!navigator.getBattery) {
+            addDebugLog('浏览器不支持电池状态API');
+            return -1; // 表示不支持
+        }
+        
+        const battery = await navigator.getBattery();
+        const level = Math.round(battery.level * 100); // 转换为百分比
+        addDebugLog(`当前设备电量: ${level}%`);
+        return level;
+    } catch (error) {
+        console.error('获取电池电量失败:', error);
+        addDebugLog(`获取电池电量失败: ${error.message}`);
+        return -2; // 表示获取失败
+    }
+}
+        
+        // 修改requestLocationPermission中的坐标转换
+        async function requestLocationPermission() {
+            if (hasLocationPermission && currentPosition) {
+                return currentPosition; // 已获取位置
+            }
+            
+            if (!navigator.geolocation) {
+                const error = new Error('您的浏览器不支持地理位置服务');
+                showStreamStatus(error.message, 'error');
+                throw error;
+            }
+            
+            try {
+                showStreamStatus('正在请求位置权限...', 'info');
+                
+                return new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(
+                        position => {
+                            // 获取原始WGS84坐标
+                            const rawLng = position.coords.longitude;
+                            const rawLat = position.coords.latitude;
+                            
+                            // 转换为GCJ02坐标系
+                            let gcjLng = rawLng;
+                            let gcjLat = rawLat;
+                            if (typeof rawLng === 'number' && typeof rawLat === 'number') {
+                                const transformed = CoordTransform.wgs84togcj02(rawLng, rawLat);
+                                gcjLng = transformed.lng;
+                                gcjLat = transformed.lat;
+                                console.log("WGS84转GCJ02成功", {原始经度: rawLng, 原始纬度: rawLat, 转换后经度: gcjLng, 转换后纬度: gcjLat});
+                            }
+                            
+                            currentPosition = {
+                                lat: gcjLat,
+                                lng: gcjLng,
+                                rawLat: rawLat,
+                                rawLng: rawLng
+                            };
+                            
+                            // 更新地图位置（使用转换后的坐标）
+                            if (map && marker) {
+                                map.setCenter([gcjLng, gcjLat]);
+                                marker.setPosition([gcjLng, gcjLat]);
+                                
+                                // 添加信息窗口
+                                const infoWindow = new AMap.InfoWindow({
+                                    content: `<div style="padding:5px; background-color:#000; color:#fff; border-radius:4px;">
+                                        <div>设备位置 (GCJ02)</div>
+                                        <div>纬度: ${gcjLat.toFixed(6)}</div>
+                                        <div>经度: ${gcjLng.toFixed(6)}</div>
+                                    </div>`,
+                                    offset: new AMap.Pixel(0, -30)
+                                });
+                                infoWindow.open(map, marker.getPosition());
+                            }
+                            
+                            hasLocationPermission = true;
+                            updateStatus('GPS定位成功并转换为GCJ02坐标', 'success');
+                            updateStatusIndicator(gpsStatusIndicator, 'online');
+                            resolve(currentPosition);
+                        },
+                        error => {
+                            // 错误处理保持不变
+                            console.error('获取位置失败:', error);
+                            let errorMsg = '获取位置失败: ';
+                            switch(error.code) {
+                                case 1: errorMsg += '用户拒绝了位置请求'; break;
+                                case 2: errorMsg += '位置获取失败'; break;
+                                case 3: errorMsg += '位置请求超时'; break;
+                                default: errorMsg += error.message;
+                            }
+                            
+                            showStreamStatus(errorMsg, 'error');
+                            hasLocationPermission = false;
+                            reject(new Error(errorMsg));
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        }
+                    );
+                });
+            } catch (error) {
+                console.error('位置权限请求失败:', error);
+                throw error;
+            }
+        }	
+		
+        // 动态加载高德地图API
+        function loadAMap() {
+            return new Promise((resolve, reject) => {
+                // 检查是否已加载
+                if (window.AMap) {
+                    resolve();
+                    return;
+                }
+                
+                // 创建脚本元素
+                const script = document.createElement('script');
+                script.src = 'https://webapi.amap.com/maps?v=2.0&key=c518d53bcc158f76ecfc8c45f6bda731&plugin=AMap.ToolBar';
+                script.async = true;
+                
+                script.onload = () => {
+                    isMapLoaded = true;
+                    resolve();
+                };
+                
+                script.onerror = () => {
+                    mapError.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>高德地图加载失败，请检查网络连接</p>';
+                    reject(new Error('高德地图加载失败'));
+                };
+                
+                document.head.appendChild(script);
+            });
+        }
+        
+        // 初始化地图
+        function initMap() {
+            if (!isMapLoaded) {
+                mapError.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>高德地图尚未加载完成</p>';
+                return;
+            }
+            
+            try {
+                map = new AMap.Map(mapContainer, {
+                    zoom: 15,
+                    center: [116.397428, 39.90923],
+                    viewMode: '3D'
+                });
+                
+                // 添加缩放控件
+                map.addControl(new AMap.ToolBar());
+                
+                // 创建自定义标记
+                marker = new AMap.Marker({
+                    position: [116.397428, 39.90923],
+                    map: map,
+                    // 设置自定义图标
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(32, 32),
+                        image: 'marker.png',
+                        imageSize: new AMap.Size(32, 32)
+                    }),
+                    anchor: 'bottom-center'
+                });
+                
+                // 隐藏错误信息
+                mapError.style.display = 'none';
+            } catch (error) {
+                console.error('地图初始化失败:', error);
+                mapError.innerHTML = '<i class="fas fa-exclamation-triangle"></i><p>地图初始化失败: ' + error.message + '</p>';
+            }
+        }
+        
+        // 获取当前位置并转换为GCJ02坐标系
+        function getCurrentLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        // 获取原始WGS84坐标
+                        const rawLng = position.coords.longitude;
+                        const rawLat = position.coords.latitude;
+                        
+                        // 转换为GCJ02坐标系（仅当原始经纬度为有效数字时）
+                        let gcjLng = rawLng;
+                        let gcjLat = rawLat;
+                        if (typeof rawLng === 'number' && typeof rawLat === 'number') {
+                            const transformed = CoordTransform.wgs84togcj02(rawLng, rawLat);
+                            gcjLng = transformed.lng;
+                            gcjLat = transformed.lat;
+                            console.log("WGS84转GCJ02成功", {原始经度: rawLng, 原始纬度: rawLat, 转换后经度: gcjLng, 转换后纬度: gcjLat});
+                        }
+                        
+                        currentPosition = {
+                            lat: gcjLat,
+                            lng: gcjLng,
+                            // 保留原始坐标用于参考
+                            rawLat: rawLat,
+                            rawLng: rawLng
+                        };
+                        
+                        // 更新地图位置（已使用转换后的GCJ02坐标）
+                        if (map && marker) {
+                            map.setCenter([gcjLng, gcjLat]);
+                            marker.setPosition([gcjLng, gcjLat]);
+                            
+                            // 添加带样式的信息窗口，显示转换后的坐标
+                            const infoWindow = new AMap.InfoWindow({
+                                content: `<div style="padding:5px; background-color:#000; color:#fff; border-radius:4px;">
+                                    <div>设备位置 (GCJ02)</div>
+                                    <div>纬度: ${gcjLat.toFixed(6)}</div>
+                                    <div>经度: ${gcjLng.toFixed(6)}</div>
+                                </div>`,
+                                offset: new AMap.Pixel(0, -30)
+                            });
+                            infoWindow.open(map, marker.getPosition());
+                        }
+                        
+                        updateStatus('GPS定位成功并转换为GCJ02坐标', 'success');
+                        updateStatusIndicator(gpsStatusIndicator, 'online');
+                    },
+                    error => {
+                        // 错误处理保持不变
+                        console.error('获取位置失败:', error);
+                        let errorMsg = '获取位置失败: ';
+                        switch(error.code) {
+                            case 1: errorMsg += '用户拒绝了位置请求'; break;
+                            case 2: errorMsg += '位置获取失败'; break;
+                            case 3: errorMsg += '位置请求超时'; break;
+                            default: errorMsg += error.message;
+                        }
+                        showStreamStatus(errorMsg, 'error');
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                alert('您的浏览器不支持地理位置服务');
+            }
+        }
+        
+        // 初始化MQTT连接
+        function initMQTT() {
+            const mqttServer = mqttServerInput.value;
+            const deviceId = deviceIdInput.value;
+            
+            if (!mqttServer) {
+                updateStatus('MQTT服务器地址未设置', 'error');
+                return;
+            }
+            
+            // 如果已有连接，先断开
+            if (mqttClient) {
+                mqttClient.end();
+                mqttClient = null;
+            }
+            
+            const clientId = 'web_client_' + Math.random().toString(16).substr(2, 8);
+            const url = `ws://${mqttServer}/mqtt`;
+            
+            try {
+                mqttClient = mqtt.connect(url, {
+                    clientId: clientId,
+                    clean: true,
+                    connectTimeout: 4000,
+                    reconnectPeriod: 1000,
+                });
+                
+                mqttClient.on('connect', () => {
+                    updateStatus('MQTT已连接', 'success');
+                    updateStatusIndicator(mqttStatusIndicator, 'online');
+                    
+                    // 订阅主题
+                    const topic = `/terminal/sb/${deviceId}/setInfo`;
+                    mqttClient.subscribe(topic, (err) => {
+                        if (!err) {
+                            console.log(`已订阅主题: ${topic}`);
+                            addDebugLog(`已订阅主题: ${topic}`);
+                        } else {
+                            console.error('订阅主题失败:', err);
+                            addDebugLog(`订阅主题失败: ${err}`);
+                        }
+                    });
+                });
+                
+                mqttClient.on('message', (topic, message) => {
+                    const msg = message.toString();
+                    console.log(`收到消息: ${msg} [主题: ${topic}]`);
+                    addDebugLog(`收到MQTT消息: ${msg} [主题: ${topic}]`);
+                    
+                    try {
+                        const data = JSON.parse(msg);
+                        
+                        // 处理位置信息
+                        if (data.gps) {
+                            updateDevicePosition(data.gps.lat, data.gps.lng);
+                        }
+                        
+					// 处理推流控制命令（匹配指定命令格式）
+					if (
+					  data.dataextratype === 1 &&
+					  data.datatype === 68 &&
+					  data.datahead === "set device push video stream enable"
+					) {
+					  // 提取推流使能状态（增加可选链避免字段不存在时报错）
+					  const isPushEnabled = data.data?.push_video_stream_enable;
+					  
+					  if (isPushEnabled) {
+						console.log('收到开始推流命令');
+						publishStream();
+					  } else {
+						console.log('收到停止推流命令');
+						stopStream();
+					  }
+					}
+                    } catch (e) {
+                        console.error('解析消息失败:', e);
+                        addDebugLog(`解析消息失败: ${e}`);
+                    }
+                });
+                
+                mqttClient.on('error', (error) => {
+                    console.error('MQTT错误:', error);
+                    updateStatus('MQTT连接错误', 'error');
+                    updateStatusIndicator(mqttStatusIndicator, 'offline');
+                    addDebugLog(`MQTT错误: ${error}`);
+                });
+                
+                mqttClient.on('offline', () => {
+                    updateStatus('MQTT已断开', 'error');
+                    updateStatusIndicator(mqttStatusIndicator, 'offline');
+                    addDebugLog('MQTT连接已断开');
+                });
+            } catch (error) {
+                console.error('MQTT初始化失败:', error);
+                updateStatus('MQTT初始化失败', 'error');
+                addDebugLog(`MQTT初始化失败: ${error}`);
+            }
+        }
+		
+        function updateStatus(message, type) {
+            console.log(`${type}: ${message}`);
+            // 状态显示逻辑
+        }
+        
+        // 发送位置数据
+       async function sendLocationData() {
+            if (!mqttClient || !mqttClient.connected) {
+                updateStatus('MQTT未连接', 'error');
+                return;
+            }
+            
+            if (!currentPosition) {
+                updateStatus('未获取位置信息', 'error');
+                return;
+            }
+             // 获取设备电量
+			 
+			const batteryLevel = await getBatteryLevel();
+            const deviceId = deviceIdInput.value;
+            const topic = `/terminal/sb/${deviceId}/getInfo`;
+            const payload = JSON.stringify({
+                gps: {
+                    lat: currentPosition.lat,
+                    lng: currentPosition.lng,
+					battery: batteryLevel, // 添加电量信息
+                    timestamp: new Date().getTime()
+                }
+            });
+            
+            mqttClient.publish(topic, payload, (err) => {
+                if (err) {
+                    console.error('发送位置数据失败:', err);
+                    updateStatus('发送位置数据失败', 'error');
+                    addDebugLog(`发送位置数据失败: ${err}`);
+                } else {
+                    console.log('位置数据已发送');
+                    updateStatus('位置数据已发送', 'success');
+                    addDebugLog('位置数据已发送');
+                    updateLastUpdateTime();
+                }
+            });
+        }
+        
+        // 自动发送位置数据
+        function toggleAutoSend() {
+            if (isAutoSending) {
+                // 停止自动发送
+                if (locationSendTimer) {
+                    clearInterval(locationSendTimer);
+                    locationSendTimer = null;
+                }
+                isAutoSending = false;
+                autoSendBtn.innerHTML = '<i class="fas fa-sync-alt"></i> 自动发送';
+                autoSendBtn.classList.remove('btn-stop');
+                showStreamStatus('已停止自动发送位置数据', 'info');
+            } else {
+                // 开始自动发送（每30秒）
+                sendLocationData(); // 立即发送一次
+                locationSendTimer = setInterval(sendLocationData, 1000);
+                isAutoSending = true;
+                autoSendBtn.innerHTML = '<i class="fas fa-stop"></i> 停止自动';
+                autoSendBtn.classList.add('btn-stop');
+                showStreamStatus('已开始自动发送位置数据（每1秒）', 'success');
+            }
+        }
+        
+        // 初始化事件监听器
+        function initEventListeners() {
+            // 保存设置按钮事件
+            saveSettingsBtn.addEventListener('click', () => {
+                if (saveSettingsToLocalStorage()) {
+                    showStreamStatus('设置已保存', 'success');
+                    // 重新初始化MQTT连接以应用新设置
+                    initMQTT();
+                } else {
+                    showStreamStatus('设置保存失败', 'error');
+                }
+                // 关闭设置模态框
+                settingsModal.style.display = 'none';
+            });
+            
+            // 其他事件监听器...
+            getLocationBtn.addEventListener('click', getCurrentLocation);
+            sendDataBtn.addEventListener('click', sendLocationData);
+            autoSendBtn.addEventListener('click', toggleAutoSend);
+            
+            // 设置按钮和模态框事件
+            settingsBtn.addEventListener('click', () => {
+                settingsModal.style.display = 'flex';
+            });
+            
+            closeModal.addEventListener('click', () => {
+                settingsModal.style.display = 'none';
+            });
+            
+            // 点击模态框外部关闭
+            window.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    settingsModal.style.display = 'none';
+                }
+            });
+            
+            // 标签切换事件
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // 移除所有活动状态
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // 添加当前活动状态
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // 推流相关按钮事件
+            publishBtn.addEventListener('click', publishStream);
+            stopBtn.addEventListener('click', stopStream);
+            muteAudioBtn.addEventListener('click', toggleAudio);
+            muteVideoBtn.addEventListener('click', toggleVideo);
+        }
+        
+        // 辅助函数：显示流状态
+        function showStreamStatus(message, type) {
+            streamStatusText.textContent = message;
+            streamStatus.className = 'status-message';
+            streamStatus.classList.add(type);
+            streamStatus.style.display = 'block';
+            
+            // 3秒后自动隐藏信息
+            setTimeout(() => {
+                streamStatus.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 辅助函数：更新状态指示器
+        function updateStatusIndicator(element, status) {
+            element.className = 'status-indicator';
+            element.classList.add(status);
+        }
+        
+        // 辅助函数：更新最后更新时间
+        function updateLastUpdateTime() {
+            const now = new Date();
+            lastUpdate.textContent = now.toLocaleString();
+        }
+        
+        // 辅助函数：添加调试日志
+        function addDebugLog(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            debugLog.innerHTML += `[${timestamp}] ${message}\n`;
+            debugLog.scrollTop = debugLog.scrollHeight;
+        }
+        function createPeerConnection() {
+            // 创建RTCPeerConnection，可以添加STUN服务器以提高连接成功率
+            const config = {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' }
+                ]
+            };
+            
+            peerConnection = new RTCPeerConnection(config);
+            
+            // 添加本地流的所有轨道到PeerConnection
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
+            
+            // 监听ICE候选信息
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    addDebugLog(`ICE候选信息: ${event.candidate.candidate}`);
+                }
+            };
+            
+            // 监听连接状态变化
+            peerConnection.onconnectionstatechange = () => {
+                addDebugLog(`连接状态: ${peerConnection.connectionState}`);
+                switch(peerConnection.connectionState) {
+                    case 'connected':
+                        showStreamStatus('与SRS服务器连接成功', 'success');
+                        updateStatusIndicator(videoStatusIndicator, 'online');
+                        break;
+                    case 'disconnected':
+                    case 'failed':
+                        showStreamStatus('与SRS服务器连接断开', 'error');
+                        updateStatusIndicator(videoStatusIndicator, 'offline');
+                        break;
+                }
+            };
+        }        
+        // 开始推流
+async function publishStream() {
+            if (!localStream) {
+                showStreamStatus('未获取到媒体流，请检查权限', 'error');
+                return;
+            }
+            
+            try {
+                showStreamStatus('正在建立推流连接...', 'info');
+                
+                createPeerConnection();
+                
+                // 获取服务器配置
+                let serverUrl = srsServerInput.value.trim();
+                if (!serverUrl.startsWith('http://') && !serverUrl.startsWith('https://')) {
+                    serverUrl = 'http://' + serverUrl;
+                }
+                if (!serverUrl.includes(':')) {
+                    serverUrl += ':1985';
+                }
+                
+                let serverHost;
+                try {
+                    const urlObj = new URL(serverUrl);
+                    serverHost = urlObj.hostname;
+                } catch (e) {
+                    showStreamStatus(`SRS服务器地址格式错误: ${e.message}`, 'error');
+                    return;
+                }
+                
+                const appName = srsAppInput;
+                const streamName = srsStreamInput.value;
+                const publishUrl = `${serverUrl}/rtc/v1/publish/`;
+                const streamUrl = `webrtc://${serverHost}/${appName}/${streamName}`;
+                
+                addDebugLog(`推流URL: ${publishUrl}`);
+                addDebugLog(`流URL: ${streamUrl}`);
+                
+                // 创建offer
+                const offer = await peerConnection.createOffer({
+                    offerToReceiveAudio: false,
+                    offerToReceiveVideo: false
+                });
+                await peerConnection.setLocalDescription(offer);
+                
+                // 发送SDP到SRS服务器
+                const response = await fetchWithRetry(publishUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        api: publishUrl,
+                        streamurl: streamUrl,
+                        sdp: offer.sdp
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP错误! 状态: ${response.status}, 响应: ${errorText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.code !== 0) {
+                    throw new Error(`SRS服务器错误: ${data.code} - ${data.message}`);
+                }
+                
+                // 设置远程SDP
+                await peerConnection.setRemoteDescription(
+                    new RTCSessionDescription({ type: 'answer', sdp: data.sdp })
+                );
+                
+                // 更新UI状态
+                  isStreaming = true;
+				videoStatusIndicator.className = 'status-indicator online';
+				publishBtn.disabled = true;
+				stopBtn.disabled = false;
+               
+                
+                isStreaming = true;
+                showStreamStatus('推流已开始', 'success');
+                updateStatusIndicator(videoStatusIndicator, 'online');
+            } catch (error) {
+                console.error('推流失败:', error);
+                showStreamStatus(`推流失败: ${error.message}`, 'error');
+                
+            }
+        }
+        
+				        // 带重试机制的fetch请求
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response;
+                    
+                    // 如果是服务器错误，重试可能有效
+                    if (response.status >= 500) {
+                        throw new Error(`服务器错误: ${response.status}`);
+                    }
+                    
+                    return response;
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    addDebugLog(`请求失败，${delay}ms后重试... (${i+1}/${retries})`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        // 停止推流
+// 停止推流
+function stopStream() {
+    if (!isStreaming) return;
+
+    try {
+        // 关闭PeerConnection连接
+        if (peerConnection) {
+            peerConnection.close();
+            peerConnection = null;
+        }
+
+        // 停止媒体轨道（可选，根据需求决定是否完全停止摄像头）
+        // if (audioTrack) audioTrack.stop();
+        // if (videoTrack) videoTrack.stop();
+
+        // 更新状态变量
+        isStreaming = false;
+        videoStatusIndicator.className = 'status-indicator offline';
+        showStreamStatus('推流已停止', 'info');
+        
+        // 更新按钮状态
+        publishBtn.disabled = false;
+        stopBtn.disabled = true;
+
+        addDebugLog('推流已停止');
+    } catch (error) {
+        console.error('停止推流失败:', error);
+        showStreamStatus(`停止推流失败: ${error.message}`, 'error');
+        addDebugLog(`停止推流失败: ${error.message}`);
+    }
+}
+        
+        // 切换音频
+        function toggleAudio() {
+            if (!audioTrack) return;
+            
+            audioEnabled = !audioEnabled;
+            audioTrack.enabled = audioEnabled;
+            
+            if (audioEnabled) {
+                muteAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> 静音音频';
+                showStreamStatus('音频已开启', 'info');
+            } else {
+                muteAudioBtn.innerHTML = '<i class="fas fa-microphone-slash"></i> 开启音频';
+                showStreamStatus('音频已静音', 'info');
+            }
+        }
+        
+        // 切换视频
+        function toggleVideo() {
+            if (!videoTrack) return;
+            
+            videoEnabled = !videoEnabled;
+            videoTrack.enabled = videoEnabled;
+            
+            if (videoEnabled) {
+                muteVideoBtn.innerHTML = '<i class="fas fa-video"></i> 关闭视频';
+                showStreamStatus('视频已开启', 'info');
+            } else {
+                muteVideoBtn.innerHTML = '<i class="fas fa-video-slash"></i> 开启视频';
+                showStreamStatus('视频已关闭', 'info');
+            }
+        }
+        
+        // 更新设备位置
+        function updateDevicePosition(lat, lng) {
+            currentPosition = { lat, lng };
+            
+            if (map && marker) {
+                map.setCenter([lng, lat]);
+                marker.setPosition([lng, lat]);
+            }
+        }
+		
+
+		
+		
+		
+    </script>
+</body>
+</html>
