@@ -1,0 +1,1564 @@
+/* 基础样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+/* 顶部状态栏 */
+.status-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background: rgba(16, 24, 39, 0.95);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    color: white;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.connection-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#roomIdInput {
+    width: 180px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #E91E63;
+}
+
+#stat-button {
+		 margin-right: 5px;
+			padding: 6px 10px; /* 稍大的内边距更饱满 */
+			cursor: pointer;
+			background-color: #cf2828b3; /* 主色调：科技蓝 */
+			color: white; /* 白色文字 */
+			border: none; /* 去掉默认边框 */
+			border-radius: 4px; /* 圆角更柔和 */
+			font-size: 14px;
+			transition: background-color 0.2s; /* 过渡动画 */
+}
+
+				/* 悬停效果 */
+		#stat-button:hover {
+			background-color: #1cd20e; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+		/* 点击效果 */
+		#stat-button:active {
+			background-color: #f443369e; /* 进一步加深 */
+		}
+
+/* 无人机状态显示 - 调整后适应status-bar */
+.drone-status {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 14px;
+    background: transparent;
+	flex-wrap: wrap;
+    /* 保持原有高度适应两行 */
+    align-content: center;
+    height: auto;
+    padding: 0;
+    color: #3df700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 60%;
+}
+
+.status-line {
+    /* 每行占满整宽，强制换行 */
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 14px;
+}
+
+
+
+/* 控制按钮组 */
+.control-buttons-group {
+    display: flex;
+    gap: 10px;
+    padding: 2px 10px;
+}
+
+.control-btn.status-btn {
+    padding: 5px 8px;
+    font-size: 13px;
+}
+
+/* 主内容区 */
+.main-container {
+    position: fixed;
+    top: 50px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 大窗口区域 */
+.large-view {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* 大窗口容器 - 基础样式 */
+.video-large, .map-large {
+    width: 100%;
+    height: 100%;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+
+
+/* 视频容器 */
+.video-container {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    position: relative;
+	border-radius: 6px
+}
+
+#remote-video, #small-remote-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    
+}
+
+/* 地图容器 */
+#map-container, #small-map-container {
+    width: 100%;
+    height: 100%;
+}
+
+/* 控制区域 */
+.controls-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1px;
+    z-index: 950;
+    transition: all 0.3s ease;
+}
+
+.video-controls {
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.map-controls {
+    display: none;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.control-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #beff007a, #0082ffa6);
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+}
+
+				/* 悬停效果 */
+		.control-btn:hover {
+			background-color: #1cd20e; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+		/* 点击效果 */
+		.control-btn:active {
+			background-color: #f443369e; /* 进一步加深 */
+		}
+
+.joystick-area {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 10px;
+}
+
+/* 摇杆样式 */
+.joystick-container {
+    width: 150px;
+    height: 150px;
+    position: relative;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    overflow: hidden;
+}
+
+.joystick-center {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: rgba(0, 255, 136, 0.3);
+}
+
+.joystick {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: linear-gradient(145deg, #00ff88, #00ccff);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    cursor: pointer; /* 鼠标悬停时显示手形图标 */
+    z-index: 10;
+}
+
+.joystick:active {
+    cursor: grabbing;
+}
+
+.joystick-label {
+    position: absolute;
+    bottom: 105px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    color: #3df700; /* 摇杆标签黄色显示 */
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.joystick-values {
+    position: absolute;
+    top: 10px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    color: #3df700;/* 摇杆标签绿色显示 */
+    font-size: 12px;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* HUD元素 */
+.hud-elements {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    color: #3df700;
+    padding: 15px;
+}
+
+/* 航线执行面板 */
+#execution-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(16, 24, 39, 0.4);
+    backdrop-filter: blur(10px);
+    padding: 20px;
+    border-radius: 12px;
+    z-index: 1001;
+    display: none;
+    color: #00ccff;
+    width: 90%;
+    max-width: 350px;
+}
+
+
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(219, 57, 112, 0.5);
+    background: #b4936173;
+    color: #0f0604;
+}
+
+.close-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.execute-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(145deg, #00ff88, #00ccff);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* 搜索框 */
+.search-container {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 900;
+    display: none;
+}
+
+#search-input {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+#search-button {
+    padding: 8px 12px;
+    border-radius: 4px;
+    border: none;
+    background: linear-gradient(145deg, #00ff88, #00ccff);
+    color: #000;
+    cursor: pointer;
+}
+
+/* 状态文字样式 */
+#status {
+    color: #ffd700; /* 等待手柄连接文字黄色显示 */
+    text-align: center;
+    font-weight: bold;
+    padding: 5px 0;
+	cursor: pointer; /* 鼠标悬停时显示手形图标 */
+}
+
+/* 显示状态切换 */
+.show-video-large .video-large {
+    display: block;
+    transform: scale(1);
+    opacity: 1;
+}
+
+.show-video-large .map-large {
+    display: none;
+}
+
+.show-video-large .video-controls {
+    display: flex;
+}
+
+.show-video-large .map-controls {
+    display: none;
+}
+
+.show-video-large .small-map {
+    display: block;
+}
+
+.show-video-large .small-video {
+    display: block;
+}
+
+.show-video-large .small-views-container .video-small-view:not(.active) {
+    display: none;
+}
+
+.show-map-large .video-large {
+    display: none;
+}
+
+.show-map-large .map-large {
+    display: block;
+    transform: scale(1);
+    opacity: 1;
+}
+
+.show-map-large .video-controls {
+    display: none;
+}
+
+.show-map-large .map-controls {
+    display: flex;
+}
+
+.show-map-large .small-map {
+    display: none;
+}
+
+.show-map-large .small-video {
+    display: block;
+}
+
+.show-map-large .search-container {
+    display: flex;
+}
+
+.show-map-large #small-map-wrap {
+    display: none;
+}
+
+/* 顶部控制栏 */
+.top-controls {
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    z-index: 999;
+    padding: 0 20px;
+}
+
+/* 右侧信息面板 */
+.right-panel {
+    position: absolute;
+    top: 80px;
+    right: 20px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* 飞行数据显示区域 */
+.flight-data {
+    background: rgba(16, 24, 39, 0.7);
+    border-radius: 8px;
+    padding: 10px;
+    color: #3df700;
+    font-size: 14px;
+}
+
+/* 调整视频面板位置 */
+.video-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 调整控制按钮面板 */
+.control-panel {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 调整搜索框和连接状态的宽度 */
+#search-container, #stat-container {
+    position: static;
+    transform: none;
+    width: auto;
+}
+
+/* 调整无人机模式显示 */
+#vehicleStatus {
+    position: static;
+    background: rgba(151, 202, 218, 0.48);
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+/* 调试按钮位置调整 */
+#debug-button {
+    margin: 0;
+}
+
+/* 添加到style.css中 */
+.video-switch-buttons {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0.8;
+    /* 添加以下属性确保按钮不会导致页面滚动 */
+    pointer-events: auto;
+    user-select: none;
+}
+
+.video-switch-btn {
+    width: 80px;
+    padding: 10px 5px;
+    background-color: rgba(0, 198, 239, 0.6);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+	
+}
+
+.video-switch-btn:hover {
+    background-color: rgba(0, 120, 255, 0.8);
+}
+
+/* 仅在大视频窗口显示时显示按钮 */
+.show-map-large .video-switch-buttons {
+    display: none;
+}
+
+/* 允许视频切换按钮接收点击事件 */
+.video-switch-btn {
+    pointer-events: auto; /* 覆盖父元素的pointer-events: none */
+}
+
+/* 在style.css中添加以下样式，默认隐藏摇杆区域 */
+.joystick-area {
+    display: none;
+}
+
+/* 显示摇杆区域的样式 */
+.show-joystick .joystick-area {
+    display: flex;
+}
+
+
+.drone-telemetry {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    color: white;
+    font-size: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+}
+
+.drone-telemetry div {
+    margin: 0;
+    padding: 2px 0;
+}
+
+.drone-telemetry span {
+    font-weight: bold;
+    color: #4CAF50;
+}
+
+/* 拍照录像按钮容器 - 中间靠右侧定位 */
+.camera-controls {
+    position: absolute;
+    /* 水平位置：中间偏右（距离右侧20%宽度处），可根据需要调整 */
+    left: 95%; 
+    /* 垂直居中 */
+    top: 48%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    /* 增大按钮间距，更美观 */
+    gap: 20px; 
+    opacity: 0.9;
+    pointer-events: auto;
+    user-select: none;
+}
+
+/* 圆形粉红色按钮样式 */
+.camera-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%; /* 圆形 */
+    background-color: #ff69b4; /* 粉红色 */
+    border: 2px solid rgba(225, 13, 13, 0.3); /* 浅色边框增加层次感 */
+    color: white; /* 文字白色更清晰 */
+    font-size: 13px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.3s ease;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2); /* 轻微阴影增强立体感 */
+}
+
+/* 悬停效果优化 */
+.camera-btn:hover {
+    background-color: #ff85c0; /* 亮一点的粉色 */
+    transform: scale(1.1); /* 略放大 */
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* 地图模式下隐藏按钮 */
+.show-map-large .camera-controls {
+    display: none;
+}
+
+ /* 设置对话框样式 */
+        .settings-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 30%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .settings-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 300px;
+        }
+        
+        .settings-content h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+
+        
+        .form-group input {
+			 width: 100%;
+			padding: 8px;
+			box-sizing: border-box;
+			color: #0c1f8a; /* 深灰色文字，确保可见 */
+			background-color: #b493613b; /* 白色背景 */
+			border: 1px solid #ddd; /* 增加边框，让输入框更明显 */
+        }
+        
+        .settings-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+
+        
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        
+        .cancel-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+        
+        .settings-button {
+		 margin-right: 5px;
+			padding: 6px 10px; /* 稍大的内边距更饱满 */
+			cursor: pointer;
+			background-color: #773ab791; /* 主色调：科技蓝 */
+			color: white; /* 白色文字 */
+			border: none; /* 去掉默认边框 */
+			border-radius: 4px; /* 圆角更柔和 */
+			font-size: 14px;
+			transition: background-color 0.2s; /* 过渡动画 */
+        }
+		
+				/* 悬停效果 */
+		.settings-button:hover {
+			background-color: #0E42D2; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+
+		/* 点击效果 */
+		.settings-button:active {
+			background-color: #0A34A1; /* 进一步加深 */
+		}
+/* HUD元素	 */	
+		#speed-data {
+
+            position: absolute; 
+            top: 49%; 
+            left: 65%; 
+            width: 2%; 
+            height: 10%;
+            color: #3df700; 
+            padding: 8px;
+
+        }
+        #alt-data {
+
+          position: absolute; 
+            top: 49%; 
+            left: 32%; 
+            width: 2%; 
+            height: 10%;
+            color: #3df700; 
+            padding: 8px;
+
+        }
+		
+		#lon-data {
+
+            position: absolute; 
+            top: 92%; 
+            left: 75%; 
+            width: 14%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+		#lat-data {
+
+            position: absolute; 
+            top: 92%; 
+            left: 87%; 
+            width: 14%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+		#mobtim-data {
+
+            position: absolute; 
+            top: 92%; 
+            left: 5%; 
+            width: 30%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+		#gps-data {
+
+            position: absolute; 
+            top: 92%; 
+            left: 70%; 
+            width: 10%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+		#batt-data {
+
+            position: absolute; 
+            top: 0%; 
+            left: 95%; 
+            width: 10%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+		#jiguang-data {
+
+            position: absolute; 
+            top: 92%; 
+            left: 39%; 
+            width: 23%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+		#video-status {
+
+            position: absolute; 
+            top: 0%; 
+            left: 0%; 
+            width: 20%; 
+            height: 10%;
+            color: #3df500; 
+            padding: 8px;
+
+        }
+
+
+        .circle {
+            width: 8px; /* Adjust the size as needed */
+            height: 8px;
+            border-radius: 50%;
+            
+            border: 2px solid #3df700; /* Adjust the border color and width as needed */
+            background-color: transparent; /* Ensure the circle is hollow */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+          }
+            .circle1 {
+            top: 35%;
+            left: 35%;
+            width: 30%; /* Adjust the size as needed */
+            height: 30%;
+            border-radius: 2%;
+            border: 1px dashed #3df700; /* Adjust the border color and width as needed */
+            background-color: transparent; /* Ensure the circle is hollow */
+             position: absolute;
+                  
+          }
+          .dashed-line {
+            width: 61%;
+            height: 2px;
+            background: repeating-linear-gradient(
+                90deg,
+                #3df700,
+                #3df700 10px,
+                #ffffff00  10px,
+                #ffffff00 25px
+            );
+            position: absolute;
+            top: 50%;
+            left: 20%;
+            transform-origin: center center;
+            transition: transform 0.1s, top 0.1s;
+        }
+.amap-ui-control-position-tr {
+    top: 1px !important;  /* 调整顶部距离 */
+    right: 1px !important; /* 调整右侧距离 */
+}
+
+    .drone-settings-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 30%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .drone-settings-content {
+        background-color: #ffffffe6;
+        padding: 20px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 350px;
+		color: #2196F3;
+    }
+    
+    .drone-settings-content h3 {
+		color: #00ccff;
+        margin-top: 0;
+        text-align: center;
+    }
+    
+    .toggle-group {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .toggle-label {
+        font-weight: bold;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: #4CAF50;
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+    
+    .danger-btn {
+        background-color: #79554887;
+        color: white;
+        border: none;
+    }
+	
+	
+	
+/* 设备选择面板样式 */
+.device-panel {
+    position: absolute;
+    top: 55px;
+    left: 5px;
+    z-index: 999;
+    background: rgba(16, 24, 39, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 15px;
+    width: 175px;
+    max-height: 400px;
+    overflow-y: auto;
+    color: white;
+}
+
+
+
+.model-select-modal {
+	display: none; 
+    position: absolute;
+    top: 2px;
+    left: 37%;
+    z-index: 999;
+    background: rgba(16, 24, 39, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 8px;
+    padding: 10px;
+    width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+    color: white;
+}
+
+
+        .device-item {
+            position: relative;
+        }
+        .delete-device {
+            position: absolute;
+            right: 10px;
+            top: 30%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 25px;
+            display: none;
+        }
+        .device-item:hover .delete-device {
+            display: block;
+        }
+.device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.device-item {
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.device-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.device-item.active {
+    background: linear-gradient(145deg, #00a8ff, #00ff7d));
+    color: #00ff88;
+}
+
+.device-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3df700;
+}
+
+.device-status.offline {
+    background: #ff5252;
+}
+
+.device-info {
+    flex: 1;
+}
+
+.device-name {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.device-id {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.toggle-device-panel {
+    position: absolute;
+    top: 55px;
+    left: 5px;
+    z-index: 1000;
+    background: #773ab791;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 14px;
+}
+				/* 悬停效果 */
+.toggle-device-panel:hover {
+			background-color: #1cd20e; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+		/* 点击效果 */
+.toggle-device-panel:active {
+			background-color: #f443369e; /* 进一步加深 */
+		}
+
+
+
+
+ /* 添加启动图片覆盖层样式 */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; /* 确保在最上层 */
+            cursor: pointer;
+            transition: opacity 0.5s ease;
+        }
+        
+        .splash-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        /* 设置对话框样式 */
+        .settings-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 30%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .settings-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .settings-content h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+
+        
+        .settings-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .settings-btn {
+			
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+				/* 悬停效果 */
+		.settings-btn:hover {
+			background-color: #1cd20e; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+		/* 点击效果 */
+		.settings-btn:active {
+			background-color: #f443369e; /* 进一步加深 */
+		}
+        
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        
+        .cancel-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+        }
+        
+
+		
+/* 修改small-views-container样式确保垂直排列在右上角 */
+.small-views-container {
+    position: absolute;
+    top: 5px; /* 距离顶部的距离，可根据需要调整 */
+    right: 35px; /* 距离右侧的距离 */
+    display: flex;
+    flex-direction: column; /* 垂直排列 */
+    gap: 2px; /* 两个视频窗口之间的间距 */
+    z-index: 100; /* 确保在其他内容上方 */
+}
+
+/* 每个小视频窗口的样式 */
+.small-view {
+    width: 240px; /* 宽度固定 */
+    height: 140px; /* 高度固定 */
+    cursor: pointer;
+    position: relative;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    overflow: hidden; /* 防止视频内容溢出 */
+}
+
+/* 激活状态的边框样式 */
+
+
+/* 视频标签样式 */
+.small-video-label {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    padding: 2px 5px;
+    font-size: 12px;
+    border-radius: 3px;
+    z-index: 10;
+}
+
+/* 确保视频元素填满容器 */
+.small-video video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 保持视频比例并填满容器 */
+	border-radius: 6px
+}
+
+
+/* 调整小窗口显示逻辑 - ********************* */
+.show-video-large .small-views-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* 当第一个视频在大窗口时，显示第二个小视频和小地图，隐藏第一个小视频 */
+.show-video-large .active-video-1 .video-small-view:nth-child(1) {
+    display: none !important;
+}
+.show-video-large .active-video-1 .video-small-view:nth-child(2) {
+    display: block !important;
+}
+.show-video-large .active-video-1 #small-map-wrap {
+    display: block !important;
+}
+
+/* 当第二个视频在大窗口时，显示第一个小视频和小地图，隐藏第二个小视频 */
+.show-video-large .active-video-2 .video-small-view:nth-child(1) {
+    display: block !important;
+}
+.show-video-large .active-video-2 .video-small-view:nth-child(2) {
+    display: none !important;
+}
+.show-video-large .active-video-2 #small-map-wrap {
+    display: block !important;
+}
+
+/* 小窗口基础样式调整 */
+.small-views-container {
+    position: absolute;
+    top: 15px;
+    right: 65px;
+    z-index: 100;
+}
+
+.small-view {
+    width: 240px;
+    height: 160px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* 激活状态的小视频窗口高亮 */
+.small-view.active {
+    border-color: #00ff88;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+
+/* 在style.css中添加下拉选择器样式 */
+.device-selector {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    padding: 2px 5px;
+    font-size: 12px;
+    z-index: 11;
+    width: auto;
+}
+
+.add-device-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* 添加设备模态框整体样式 */
+.add-device-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(2px);
+}
+
+/* 模态框内容容器 */
+.add-device-content {
+    background: #9E9E9E;
+    padding: 24px;
+    border-radius: 12px;
+    width: 320px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 模态框标题 */
+.modal-title {
+    margin: 0 0 20px 0;
+    color: #FF5722;
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* 表单组样式 */
+.form-group {
+    margin-bottom: 18px;
+}
+
+/* 表单标签 */
+.form-label {
+    display: block;
+    margin-bottom: 6px;
+    color: #f0efff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* 输入框样式 */
+.form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s ease;
+}
+
+/* 输入框聚焦样式 */
+.form-input:focus {
+    border-color: #8a74e0;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(138, 116, 224, 0.3);
+}
+
+/* 输入框占位符样式 */
+.form-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* 下拉选择框样式 */
+.form-select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 14px;
+    outline: none;
+    transition: all 0.3s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+/* 下拉框聚焦样式 */
+.form-select:focus {
+    border-color: #8a74e0;
+    background-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 2px rgba(138, 116, 224, 0.3);
+}
+
+/* 下拉框选项样式 */
+.form-select option {
+    background: #5a45a7;
+    color: #ffffff;
+    padding: 8px;
+}
+
+/* 按钮容器 */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+/* 通用按钮样式 */
+.btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+/* 取消按钮样式 */
+.btn-cancel {
+    background: #FF9800;
+    color: #ffffff;
+}
+
+				/* 悬停效果 */
+		.btn-cancel:hover {
+			background-color: #1cd20e; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+		/* 点击效果 */
+		.btn-cancel:active {
+			background-color: #f443369e; /* 进一步加深 */
+		}
+
+/* 确认按钮样式 */
+.btn-confirm {
+    background: #007bff;
+    color: #ffffff;
+}
+
+				/* 悬停效果 */
+		.btn-confirm:hover {
+			background-color: #1cd20e; /* 加深颜色 */
+			box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 轻微阴影 */
+		}
+		/* 点击效果 */
+		.btn-confirm:active {
+			background-color: #f443369e; /* 进一步加深 */
+		}
+
+/* 按钮点击效果 */
+.btn:active {
+    transform: translateY(0);
+}
+
+
+		/* 添加到style.css或页面style区域 */
+#waypoint-list {
+    margin: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px; /* 整体缩小字体 */
+}
+
+.waypoint-item {
+    margin: 5px 0;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    gap: 0px;
+    cursor: move; /* 显示可拖动光标 */
+    transition: all 0.2s;
+}
+
+.waypoint-item:hover {
+    background-color: #f0f5ff;
+    border-color: #c9e0ff;
+}
+
+.waypoint-item.dragging {
+    opacity: 0.7;
+    background-color: #e6f7ff;
+    border-color: #91d5ff;
+}
+
+.waypoint-index {
+    min-width: 20px;
+    text-align: center;
+    font-weight: bold;
+    color: #1890ff;
+}
+
+.waypoint-coords {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    font-size: 11px; /* 经纬度字体更小 */
+    color: #333;
+}
+
+.waypoint-height-control {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.waypoint-height {
+    width: 60px;
+    padding: 2px 5px;
+    font-size: 11px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+/* 添加到index.html的style区域 */
+#waypoint-list {
+    font-size: 13px;
+}
+
+.waypoint-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    margin: 4px 0;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.waypoint-coords {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.waypoint-height-control input {
+    width: 60px;
+    margin: 0 5px;
+    padding: 2px 4px;
+    font-size: 12px;
+}
