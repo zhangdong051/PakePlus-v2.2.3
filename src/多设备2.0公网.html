@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>尖兵3.0控制系统</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+
+    </style>
+</head>
+<body class="show-map-large">
+    <!-- 启动图片覆盖层 -->
+    <div class="splash-screen" id="splash-screen">
+        <img src="drone-splash.png" alt="尖兵3.0系统启动" class="splash-image">
+    </div>
+
+    <!-- 顶部状态栏 -->
+    <div class="status-bar">
+        <div class="connection-info">
+            <!-- 添加设置按钮 -->
+            <button class="settings-button" id="settings-button">💻️️设置</button>
+            <button id="stat-button" >🔄连接</button>
+			<button class="settings-button" onclick="videoliebiao()" >📱全局监控</button>
+			<button class="settings-button" onclick="lianluweb()" >🔗链路信息</button>
+        </div> 
+			<!-- 设备选择面板 -->
+<button class="toggle-device-panel" onclick="toggleDevicePanel()">📱 设备列表</button>
+
+<div class="device-panel" id="device-panel" style="display: none;">
+    <h4>设备列表</h4>
+    <div class="device-list" id="device-list">
+        <!-- 设备列表将通过JavaScript动态生成 -->
+    </div>
+    <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+        <button class="control-btn status-btn" onclick="addNewDevice()" style="width: 100%; margin-bottom: 5px;">+ 添加设备</button>
+    </div>
+</div>
+        <div class="drone-status">		
+			<div id="mobmcc-data"></div>
+            <div id="mobnet-data"></div>
+			<div id="mobbnd-data"></div>
+            <div id="mobpci-data"></div>
+			<div id="mobrsp-data"></div>
+			<div id="mobsnr-data"></div>
+			<div id="uplink-data"></div>
+			<div id="downlink-data"></div>
+        </div>
+        <!-- 控制按钮组 - 移至顶部状态栏 -->
+        <div class="control-buttons-group"id="control-buttons-group">
+
+            <button class="control-btn status-btn" onclick="droneARM()"> 🔒解/上锁</button>
+            <button class="control-btn status-btn" onclick="dronetakeoff()">🛫起/降落</button>
+			<button class="control-btn status-btn" onclick="droneZTHX()">⏸️暂/继航</button>
+			<button class="control-btn status-btn" onclick="droneRTL()">🏠返/取航</button>
+			<button class="control-btn status-btn" onclick="openDroneSettings()">📅机/设置</button>
+        </div>
+
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-container">
+        <!-- 大窗口区域 -->
+        <div class="large-view">
+            <!-- 大视频窗口 -->
+            <div class="video-large video-container" id="large-video-container">
+                <video autoplay playsinline id="remote-video"></video>
+                <div class="hud-elements">
+
+                    <!-- 视频加载状态 -->
+                    <div id="video-loading" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; background: rgba(0,0,0,0.5); padding: 10px;">
+                        视频加载中...
+                    </div>
+                    <div id="video-error" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; background: rgba(255,0,0,0.5); padding: 10px;">
+                        视频加载失败
+                    </div>
+					<!-- 在视频容器内添加切换按钮组 -->
+					<div class="video-switch-buttons" id="video-switch-buttons">
+					<button type="button" class="video-switch-btn" onclick="switchVideoSource(1, event)">📹广角</button>
+					<button type="button" class="video-switch-btn" onclick="switchVideoSource(2, event)">📹变焦</button>
+					<button type="button" class="video-switch-btn" onclick="switchVideoSource(3, event)">🔎变焦+</button>
+					<button type="button" class="video-switch-btn" onclick="switchVideoSource(4, event)">🔎变焦-</button>
+					<button type="button" class="video-switch-btn" onclick="switchVideoSource(5, event)">📹️热成像</button>
+					<button type="button" class="video-switch-btn" onclick="switchVideoSource(6, event)">📹FPV</button>
+					<button type="button" class="video-switch-btn" onclick="jiguangceju()">⭕激光距</button>
+					 <button type="button" class="video-switch-btn" onclick="videostartstop()">📹关/推流</button>
+					</div>
+					<div id="speed-data"></div>
+					<div id="alt-data"></div>
+					<div id="lon-data"></div>
+					<div id="lat-data"></div>	
+					<div id="gps-data"></div>
+					<div id="mobtim-data"></div>
+					<div id="batt-data"></div>
+				    <div id="jiguang-data"></div>		
+					<!-- 视频状态显示 -->
+					<div id="video-status" >视频：停止</div>
+					<div class="circle1" id="circle1">
+					<div class="circle"></div>
+					<div class="dashed-line" id="line"></div>
+					</div>
+
+					<div class="camera-controls">
+						<button type="button" class="video-switch-btn camera-btn" onclick="dronepicter()">拍/📸</button>
+						<button type="button" class="video-switch-btn camera-btn" onclick="dronevideo()">录/🛑</button>
+						<button type="button" class="video-switch-btn camera-btn" onclick="minolianjie()">册/📁</button>
+					</div>
+                </div>
+            </div>
+
+            <!-- 大地图窗口 -->
+            <div class="map-large" id="map-container"></div>
+
+            <!-- 地图搜索框 -->
+            <div class="search-container">
+                <input id="search-input" type="text" placeholder="输入经纬度:116.397,39.908">
+                <button id="search-button" onclick="searchLocation()">🔍搜索</button>
+            </div>
+        </div>
+
+<div class="small-views-container">
+    <div class="small-view video-small-view" onclick="switchToLargeView(1)">
+        <div class="small-video video-container">
+            <video autoplay playsinline id="small-remote-video-1"></video>
+            <div class="small-video-label">M350</div>
+        </div>
+    </div>
+<!-- 在small-remote-video-2容器内添加下拉选择器（阻止事件冒泡） -->
+<div class="small-view video-small-view" onclick="switchToLargeView(2)">
+    <div class="small-video video-container">
+        <video autoplay playsinline id="small-remote-video-2"></video>
+       <!--<div class="small-video-label"></div> -->
+        <!-- 新增设备选择下拉框，添加onclick阻止事件冒泡 -->
+        <select class="device-selector" id="device-selector-2" 
+                onclick="event.stopPropagation()"  
+                onchange="changeDeviceForVideo(2, this.value)">
+            <!-- 选项将通过JavaScript动态生成 -->
+        </select>
+    </div>
+</div>
+	        <!-- 小窗口区域 - 已调整到右上角 -->
+        <div class="small-view" id="small-map-wrap" onclick="toggleViews()">
+            <!-- 小地图窗口 -->
+            <div class="small-map" id="small-map-container"></div>
+</div>
+
+
+        <!-- 控制区域 -->
+        <div class="controls-container">
+            <!-- 视频模式控制 -->
+            <div class="video-controls">
+                <div class="joystick-area">
+                    <div class="joystick-container" id="left-joystick-container">
+                        <div class="joystick-center"></div>
+                        <div class="joystick" id="left-joystick"></div>
+                        <div class="joystick-label">C高度Z/Q航向E</div>
+                        <div class="joystick-values">
+                            <span>X: <span id="left-joystick-x">0</span></span>
+                            <span>Y: <span id="left-joystick-y">0</span></span>
+                        </div>
+                    </div>
+
+                    <div class="joystick-container" id="right-joystick-container">
+                        <div class="joystick-center"></div>
+                        <div class="joystick" id="right-joystick"></div>
+                        <div class="joystick-label">W俯仰S/A横滚D</div>
+                        <div class="joystick-values">
+                            <span>X: <span id="right-joystick-x">0</span></span>
+                            <span>Y: <span id="right-joystick-y">0</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="status">🎮使用虚拟摇杆</div>
+            </div>
+
+            <!-- 地图模式控制 -->
+            <div class="map-controls">
+       <button class="control-btn" id="drawing-toggle" onclick="toggleDrawing()">✨开始绘制</button>
+                <button class="control-btn" onclick="removeLastPoint()">❌删除航点</button>
+                <button class="control-btn" onclick="clearAll()">❌清空航点</button>
+                <button class="control-btn" onclick="toggleExecutionPanel()">▶️下发航线</button>
+            </div>
+        </div>
+    </div>
+ <!-- 航线执行面板 -->
+    <div id="execution-panel">
+        <button class="close-panel" onclick="toggleExecutionPanel()">×</button>
+        <h3>航线执行参数</h3>
+
+        <div class="form-group">
+            <label for="flight-height">航线高度 (米)</label>
+            <input type="number" id="flight-height" value="90" min="10" step="5">
+        </div>
+		
+			<div id="waypoint-list" style="margin: 10px; padding: 10px; border: 1px solid #eee; max-height: 200px; overflow-y: auto;">
+			<div id="waypoint-items"></div>
+		</div>
+		
+        <div class="form-group">
+            <label for="flight-speed">航线速度 (米/秒)</label>
+            <input type="number" id="flight-speed" value="5" min="1" step="1">
+        </div>
+
+        <div class="form-group">
+            <label for="return-height">返航高度 (米)</label>
+            <input type="number" id="return-height" value="150" min="10" step="10">
+        </div>
+ 
+        <div class="form-group">
+            <label for="lost-action">遥控器失联动作</label>
+            <select id="lost-action">
+                <option value="return">继续执行</option>
+                <option value="rtland">自动返航</option>
+            </select>
+        </div>
+
+        <button class="execute-btn" onclick="executeFlight()">🛫立即执行</button>
+    </div>
+
+    <!-- 设置对话框 -->
+    <div class="settings-modal" id="settings-modal">
+        <div class="settings-content">
+            <h3>系统设置</h3>
+            <div class="form-group">
+                <label for="video-server">视频服务器地址</label>
+                <input type="text" id="video-server" placeholder="例如: 192.168.2.100">
+            </div>
+            <div class="form-group">
+                <label for="mqtt-server">MQTT服务器地址</label>
+                <input type="text" id="mqtt-server" placeholder="例如: 192.168.2.100:8083">
+            </div>
+			  <div class="form-group">
+                <label for="zhihuisuolon">指挥所坐标</label>
+                <input type="text" id="zhihuisuolon" placeholder="例如:114.378185,36.138881">
+            </div>
+			 <h5>更新说明：支持显示不同类别指令，修复指令重叠</h5>
+            <div class="settings-buttons">
+                <button class="settings-btn cancel-btn" onclick="closeSettings()">取消</button>
+                <button class="settings-btn save-btn" onclick="saveSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+
+
+	<div class="drone-settings-modal" id="drone-settings-modal">
+    <div class="drone-settings-content">
+        <h3>无人机设置</h3>
+
+        <!-- 避障设置 -->
+        <div class="toggle-group">
+            <span class="toggle-label">避障功能</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="obstacle-avoidance">
+                <span class="toggle-slider"onclick="enablebzkg()"></span>
+            </label>
+        </div> 
+			<!-- 修改无人机设置中的失联行为部分 -->
+			<div class="form-group">
+				<label for="rc-lost-action">RC失联行为</label>
+				<select id="rc-lost-action" onchange="enableslkg()">
+					<option value="0">悬停</option>
+					<option value="1">降落</option>
+					<option value="2">返航</option>
+				</select>
+			</div>	
+        <!-- RTK设置 -->
+        <div class="toggle-group">
+            <span class="toggle-label">RTK定位</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="rtk-enabled">
+                <span class="toggle-slider"onclick="enablertkkg()"></span>
+            </label>
+        </div>
+		<!-- 重置相机设置 -->
+        <div class="form-group">
+            <button class="settings-btn danger-btn" onclick="chongzhixiangji()">重置相机设置🛠️</button>
+        </div>
+		<!-- 更新返航点 -->
+        <div class="form-group">
+            <button class="settings-btn danger-btn" onclick="gengxinfanhangd()">更新返航点(✈️位置)</button>
+        </div>
+		<!-- 更新返航点 -->
+        <div class="form-group">
+            <button class="settings-btn danger-btn" onclick="shezhifanhangd()">设置返航点(📄位置)</button>
+        </div>
+        <!-- 格式化SD卡 -->
+        <div class="form-group">
+            <button class="settings-btn danger-btn" onclick="formatSdCard()">格式化SD卡(✈️存储)</button>
+        </div>
+
+		<!-- 返航高度设置 -->
+        <div class="form-group">
+            <label for="return-altitude">返航高度 (米)</label>
+            <input type="number" id="return-altitude" value="300" min="10" max="1500" step="1">
+        </div>
+
+        <div class="settings-buttons">
+            <button class="settings-btn cancel-btn" onclick="closeDroneSettings()">取消</button>
+            <button class="settings-btn save-btn" onclick="saveDroneSettings()">保存设置</button>
+        </div>
+    </div>
+</div>
+
+<div class="model-select-modal" id="model-select-modal">
+    <div class="model-select-content" style="background: white; padding: 20px; border-radius: 8px; width: 300px;">
+        <h3 style="margin-top: 0;">选择设备型号</h3>
+        <select id="model-selector" style="width: 100%; padding: 8px; margin-bottom: 15px;">
+            <option value="d10">D10</option>
+            <option value="e20">E20</option>
+            <option value="b2">宇树</option>
+            <option value="lite3">云深处</option>
+            <option value="sb">人员</option>
+        </select>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button id="model-cancel" style="padding: 5px 15px; cursor: pointer;">取消</button>
+            <button id="model-confirm" style="padding: 5px 15px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">确认</button>
+        </div>
+    </div>
+</div>
+<!-- 添加新设备模态框 - 移除所有内联样式，使用CSS类名 -->
+<div class="add-device-modal" id="add-device-modal">
+    <div class="add-device-content">
+        <h3 class="modal-title">添加新设备</h3>
+        
+        <div class="form-group">
+            <label class="form-label">设备ID (IMEI):</label>
+            <input type="text" id="new-device-id" class="form-input" placeholder="输入设备ID">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">设备名称:</label>
+            <input type="text" id="new-device-name" class="form-input" placeholder="输入设备名称">
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">设备型号:</label>
+            <select id="new-device-model" class="form-select">
+                <option value="d10">D10</option>
+                <option value="e20">E20</option>
+                <option value="b2">宇树</option>
+                <option value="lite3">云深处</option>
+                <option value="sb">人员</option>
+            </select>
+        </div>
+        
+        <div class="modal-actions">
+            <button id="add-device-cancel" class="btn btn-cancel">取消</button>
+            <button id="add-device-confirm" class="btn btn-confirm">确认</button>
+        </div>
+    </div>
+</div>
+<!-- 编辑设备模态框 -->
+<div class="edit-device-modal" id="edit-device-modal">
+    <div class="edit-device-content">
+        <h3>编辑设备</h3>
+        <div class="form-group">
+            <label>设备ID (IMEI):</label>
+            <input type="text" id="edit-device-id" placeholder="设备ID">
+        </div>
+        <div class="form-group">
+            <label>设备名称:</label>
+            <input type="text" id="edit-device-name" placeholder="设备名称">
+        </div>
+        <div class="form-group">
+            <label>设备型号:</label>
+            <select id="edit-device-model">
+                <option value="d10">D10</option>
+                <option value="e20">E20</option>
+                <option value="b2">宇树</option>
+                <option value="lite3">云深处</option>
+                <option value="sb">人员</option>
+            </select>
+        </div>
+        <div class="modal-actions">
+            <button id="edit-device-cancel" class="btn btn-cancel">取消</button>
+            <button id="edit-device-confirm" class="btn btn-confirm">保存</button>
+        </div>
+    </div>
+</div>
+
+    <script type="text/javascript">
+        window._AMapSecurityConfig = {
+            securityJsCode: "bb3b3425840367f4ef6fc0f03d51a637",
+        };
+    </script>
+    <script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=c2c5ca77bbbc732a1144127e4ae9994b&plugin=AMap.ToolBar,AMap.HawkEye"></script>
+     <script src="cshxg.js"></script>
+	<script src="mqtt.min.js"></script>
+    <script src="https://webapi.amap.com/loader.js"></script>
+	<script src="mapin.js"></script>
+	<script src="wzgjgx.js"></script> <!-- 提前加载这个脚本 -->
+	<script src="gdmapmain.js"></script>
+    <script type="text/javascript" src="adapter-7.4.0.min.js"></script>
+    <script type="text/javascript" src="srs.sdk.js"></script>
+	<script src="mqtton.js"></script>
+	<script src="./hzhxzx.js"></script>
+	<script src="./datarecver.js"></script>
+	<script src="./changevideoon.js"></script>
+	<script src="./coordtransform.js"></script>
+
+    <script>
+
+
+	//修改配置初始化部分，加入指挥所坐标
+	const savedConfig = localStorage.getItem('appConfig');
+	let config = savedConfig ? JSON.parse(savedConfig) : {
+		videoServer: '192.168.2.100',
+		mqttServer: '192.168.2.100:28083',
+		commandPostCoord: '114.378185,36.138881' // 添加指挥所坐标默认值
+	};
+	//hud变量
+	let hudpitch = 0; // 俯仰
+    let hudroll = 0; //横滚
+	//mqtt主题相关变量
+	let roomId = null; //初始化为null
+	let MQTTXterminals = '';
+	let MQTTXterminalg = ''; 
+	let MQTTXterminalc = '';
+	
+	
+	// 多设备管理相关变量
+	let devices = [];
+	let currentDeviceId = null;
+	let currentDevice = null; // 新增：存储当前设备的完整信息（包含model）
+
+	// 轨迹线颜色池
+	const pathColors = [
+		"#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#FF00FF", 
+		"#00FFFF", "#FFA500", "#800080", "#008000", "#000080"
+	];
+//按设备类型定义图标
+    const deviceTypeIcons = {
+        drone: {
+            normal: "quadx.png",
+            active: "quadx-active.png"
+        },
+        dog: {
+            normal: "dog.png",
+            active: "dog-active.png"
+        },
+        people: {
+            normal: "people.png",
+            active: "people-active.png"
+        }
+    };
+	
+//获取设备类型（无人机/机器狗/人员）
+    function getDeviceType(deviceModel) {
+        // 根据型号判断设备类型
+        const droneModels = ['d10', 'e20'];
+        const dogModels = ['b2', 'lite3'];
+        const peopleModels = ['sb'];
+        
+        if (droneModels.includes(deviceModel)) {
+            return 'drone';
+        } else if (dogModels.includes(deviceModel)) {
+            return 'dog';
+        } else if (peopleModels.includes(deviceModel)) {
+            return 'people';
+        }
+        return 'drone'; // 默认无人机
+    }
+
+// 存储每个设备的轨迹
+	let devicePaths = {};
+
+//添加航迹相关变量
+	let flightPath = []; // 存储航迹点
+	const MAX_PATH_POINTS = 1000; // 最大航迹点数量，防止内存溢出
+	let pathLineLarge = null; // 大地图航迹线
+	let pathLineSmall = null; // 小地图航迹线
+
+	// 修改视频相关变量
+	let videoSdks = {
+		1: null,  // 第一个设备的视频SDK
+		2: null   // 第二个设备的视频SDK
+	};
+	let isVideoPlaying = {
+		1: false,
+		2: false
+	};
+	
+// 定义不同设备型号对应的按钮配置
+		const deviceButtonConfigs = {
+			// D10型号设备按钮配置
+			"d10": {
+				videoSwitches: [
+					{ action: 1, label: "📹广角", func: "switchVideoSource(1, event)" },
+					{ action: 2, label: "📹变焦", func: "switchVideoSource(2, event)" },
+					{ action: 3, label: "🔎变焦+", func: "switchVideoSource(3, event)" },
+					{ action: 4, label: "🔎变焦-", func: "switchVideoSource(4, event)" },
+					{ action: 5, label: "📹️热成像", func: "switchVideoSource(5, event)" },
+					{ action: 6, label: "📹FPV", func: "switchVideoSource(6, event)" },
+					{ label: "⭕激光距", func: "jiguangceju()" },
+					{ action: 7, label: "📹关/推流", func: "videostartstop()" }
+				],
+				controls: [
+					{ label: "🔒解/上锁", func: "droneARM()" },
+					{ label: "🛫起/降落", func: "dronetakeoff()" },
+					{ label: "⏸️暂/继航", func: "droneZTHX()" },
+					{ label: "🏠返/取航", func: "droneRTL()" },
+					{ label: "📅机/设置", func: "openDroneSettings()" }
+				]
+			},
+			// E20型号设备按钮配置和D10一样
+			"e20": {
+				 videoSwitches: [
+					{ action: 1, label: "📹广角", func: "switchVideoSource(1, event)" },
+					{ action: 2, label: "📹变焦", func: "switchVideoSource(2, event)" },
+					{ action: 3, label: "🔎变焦+", func: "switchVideoSource(3, event)" },
+					{ action: 4, label: "🔎变焦-", func: "switchVideoSource(4, event)" },
+					{ action: 5, label: "📹️热成像", func: "switchVideoSource(5, event)" },
+					{ action: 6, label: "📹FPV", func: "switchVideoSource(6, event)" },
+					{ action: 7, label: "📹关/推流", func: "videostartstop()" }
+				],
+				controls: [
+					{ label: "🔒解/上锁", func: "droneARM()" },
+					{ label: "🛫起/降落", func: "dronetakeoff()" },
+					{ label: "⏸️暂/继航", func: "droneZTHX()" },
+					{ label: "🏠返/取航", func: "droneRTL()" },
+					{ label: "📅机/设置", func: "openDroneSettings()" }
+				]
+			},
+			// 宇树B2型号设备按钮配置（示例：机器人相关功能）
+			"b2": {
+				videoSwitches: [
+					{ label: "进入阻尼", func: "jinruzuni()" },
+					{ label: "平衡站立", func: "pinghengzhanli()" },
+					{ label: "停止移动", func: "tingzhiyidong()" },
+					{ label: "恢复站立", func: "huifuzhanli()" },
+					{ label: "切换步态", func: "qiehuanbutai()" },
+					{ label: "持续移动", func: "chixuyidong()" },
+					{ label: "轨迹跟踪", func: "gujigenzong()" }
+				],
+				controls: [
+					{ label: "AI模式", func: "aimoshi()" },
+					{ label: "常规模式", func: "changguimoshi()" }
+				]
+			},
+			// 云深处lite3型号配置
+			"lite3": {
+				videoSwitches: [
+					{  label: "起立/趴下", func: "qilipaxia()" },
+					{  label: "模式切换",  func: "moshiqiehuan()" }
+				],
+				controls: [
+					{ label: "🔒锁定", func: "droneARM()" },
+					{ label: "📅运动", func: "openDroneSettings()" }
+				]
+			},
+			// 人员设备配置
+			"sb": {
+				videoSwitches: [
+					{ action: 1, label: "📹摄像头", func: "switchVideoSource(1, event)" },
+					{ action: 7, label: "📹关推流", func: "videostartstop()" }
+				],
+				controls: [
+					{ label: "📞通话", func: "startCall()" },
+					{ label: "📅设置", func: "openDroneSettings()" }
+				]
+			}
+		};
+
+
+// 添加启动图片关闭功能
+		document.addEventListener('DOMContentLoaded', function() {
+			const splashScreen = document.getElementById('splash-screen');
+
+			// 点击图片关闭启动界面
+			splashScreen.addEventListener('click', function() {
+				// 添加淡出效果
+				splashScreen.style.opacity = '0';
+				// 动画结束后隐藏元素
+				setTimeout(() => {
+					splashScreen.style.display = 'none';
+					// 启动程序正常运行逻辑
+				   // initApplication();
+				}, 500);
+			});
+				// 初始化按钮显示
+		if (currentDevice && currentDevice.model) {
+			updateDeviceButtons();
+		}	
+		});
+	
+// 初始化连接按钮事件
+		document.addEventListener('DOMContentLoaded', function() {
+			const statButton = document.getElementById('stat-button');
+			if (statButton) {
+				// 初始状态设置为连接
+				statButton.textContent = '🔄连接';
+				statButton.onclick = connect;
+			}
+		});	
+	
+
+
+
+
+
+
+
+//***************数据处理结束********************/   
+	// 修改地图初始状态设置
+	const windowState = {
+		video: {
+			zoom: 1,
+			position: { x: 0, y: 0 }
+		},
+		map: {
+			zoom: 14,
+			// 使用指挥所坐标作为默认中心
+			center: (() => {
+            try {
+                // 尝试从配置解析坐标
+                const [lng, lat] = config.commandPostCoord.split(',').map(Number);
+                // 验证坐标有效性
+                if (isNaN(lng) || isNaN(lat)) {
+                    throw new Error('Invalid coordinate');
+                }
+                return [lng, lat];
+            } catch (error) {
+                console.warn('使用默认地图中心坐标:', error);
+                return [114.378185, 36.138881]; // 最终兜底默认值
+            }
+        })()
+		}
+	};
+
+// 切换视图模式并同步缩放状态
+		function toggleViews() {
+			const body = document.body;
+			const isVideoMode = body.classList.contains('show-video-large');
+			// 保存当前大窗口状态
+			if (isVideoMode) {
+				saveVideoState();
+				applyMapState();
+			} else {
+				saveMapState();
+				applyVideoState();
+			}
+			// 切换显示模式类
+			body.classList.toggle('show-video-large');
+			body.classList.toggle('show-map-large');
+
+			// 同步小窗口内容
+			syncSmallWindowContent();
+		}
+        // 保存视频窗口状态
+        function saveVideoState() {
+            windowState.video.zoom = 1;
+        }
+
+        // 应用视频窗口状态
+        function applyVideoState() {
+            const videoElement = document.getElementById('remote-video');
+            if (videoElement) {
+                videoElement.style.transform = `scale(${windowState.video.zoom})`;
+            }
+        }
+
+        // 保存地图窗口状态
+        function saveMapState() {
+            if (window.largeMap) {
+                windowState.map.zoom = window.largeMap.getZoom();
+                windowState.map.center = window.largeMap.getCenter();
+            }
+        }
+
+        // 应用地图窗口状态
+        function applyMapState() {
+            if (window.largeMap) {
+                window.largeMap.setZoomAndCenter(
+                    windowState.map.zoom,
+                    windowState.map.center
+                );
+            }
+        }
+
+// 修改syncSmallWindowContent函数，确保小窗口状态正确
+		function syncSmallWindowContent() {
+			const isVideoMode = document.body.classList.contains('show-video-large');
+			const activeVideo1 = document.body.classList.contains('active-video-1');
+			const activeVideo2 = document.body.classList.contains('active-video-2');
+
+			// 同步地图位置
+			if (window.largeMap && window.smallMap) {
+				window.smallMap.setZoomAndCenter(
+					window.largeMap.getZoom(),
+					window.largeMap.getCenter()
+				);
+			}
+
+			// 视频模式下控制小窗口显示
+			if (isVideoMode) {
+				// 显示小地图
+				document.getElementById('small-map-wrap').style.display = 'block';
+				
+				// 根据当前激活的大视频显示对应的小视频
+				if (activeVideo1) {
+					document.getElementById('small-remote-video-1').parentElement.parentElement.style.display = 'none';
+					document.getElementById('small-remote-video-2').parentElement.parentElement.style.display = 'block';
+				} else if (activeVideo2) {
+					document.getElementById('small-remote-video-1').parentElement.parentElement.style.display = 'block';
+					document.getElementById('small-remote-video-2').parentElement.parentElement.style.display = 'none';
+				}
+			} else {
+				// 地图模式下显示所有小视频，隐藏小地图
+				document.querySelectorAll('.video-small-view').forEach(el => {
+					el.style.display = 'block';
+				});
+				document.getElementById('small-map-wrap').style.display = 'none';
+			}
+		}
+
+      // 切换航线执行面板
+        function toggleExecutionPanel() {
+            const panel = document.getElementById('execution-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
+ // 页面加载完成后初始化
+		 window.onload = () => {
+		   try {
+		// 优先初始化设备管理，确保从本地存储加载设备列表
+		initDeviceManagement();
+		showTempMessage('设备列表已从本地存储加载');
+	  } catch (error) {
+		console.error('设备列表初始化失败:', error);
+	  }
+		   initMaps();
+		   syncSmallWindowContent();
+		   applyMapState(); // 应用地图状态
+			document.getElementById('edit-device-cancel').onclick = closeEditModal; //初始化编辑按钮
+			document.getElementById('edit-device-confirm').onclick = saveEditedDevice; 
+			};
+    </script>
+</body>
+</html>
